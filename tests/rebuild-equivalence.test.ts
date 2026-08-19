@@ -8,7 +8,7 @@
  */
 import { afterAll, describe, expect, it } from "vitest";
 import { getPool } from "../lib/db";
-import { appendEvent } from "../lib/events";
+import { appendCorrection, appendEvent } from "../lib/events";
 import { rebuildDailyRollup } from "../lib/rollup";
 
 const hasDb = Boolean(process.env.DATABASE_URL);
@@ -54,6 +54,69 @@ describe.skipIf(!hasDb)("rebuild equivalence", () => {
         logicalDay: "2026-01-05",
         eventCount: 2,
         domainCounts: { body: 2 },
+        instrumentationCount: 0,
+      });
+
+      const jan6 = first.find((row) => row.logicalDay === "2026-01-06");
+      expect(jan6).toEqual({
+        logicalDay: "2026-01-06",
+        eventCount: 1,
+        domainCounts: { career: 1 },
+        instrumentationCount: 1,
+      });
+
+      await client.query("ROLLBACK");
+    } finally {
+      client.release();
+    }
+  });
+
+  it("applies the latest correction instead of the original, without double-counting", async () => {
+    const pool = getPool();
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const original = await appendEvent(client, {
+        type: "commitment.completed",
+        occurredAt: new Date("2026-02-10T10:00:00-05:00"),
+        domain: "body",
+        payload: { tier: 1 },
+      });
+
+      const beforeCorrection = await rebuildDailyRollup(client);
+      const dayBefore = beforeCorrection.find((row) => row.logicalDay === "2026-02-10");
+      expect(dayBefore).toEqual({
+        logicalDay: "2026-02-10",
+        eventCount: 1,
+        domainCounts: { body: 1 },
+        instrumentationCount: 0,
+      });
+
+      // Wrong domain logged; correct it. A second, earlier-timestamped
+      // correction is also written to confirm the *latest* one wins.
+      await appendCorrection(client, {
+        correctsType: "commitment.completed",
+        correctsEventId: original.id,
+        domain: "mind",
+        payload: { tier: 1 },
+      });
+      await appendCorrection(client, {
+        correctsType: "commitment.completed",
+        correctsEventId: original.id,
+        domain: "career",
+        payload: { tier: 1 },
+      });
+
+      const afterCorrection = await rebuildDailyRollup(client);
+      const dayAfter = afterCorrection.find((row) => row.logicalDay === "2026-02-10");
+
+      // One conduct event, under the latest correction's domain — never two.
+      expect(dayAfter).toEqual({
+        logicalDay: "2026-02-10",
+        eventCount: 1,
+        domainCounts: { career: 1 },
+        instrumentationCount: 0,
       });
 
       await client.query("ROLLBACK");

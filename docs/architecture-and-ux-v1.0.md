@@ -30,9 +30,10 @@ events
   type          text            -- see §2.2
   occurred_at   timestamptz     -- when it happened in the world
   recorded_at   timestamptz     -- when it was written (never equal by assumption)
-  logical_day   date            -- see §2.5
+  logical_day   date            -- see §2.5; a write-time cache, recomputed on rebuild
+  timezone      text            -- the zone logical_day was computed against; see §2.5
   domain        text nullable
-  subject_id    uuid nullable   -- quest, stance, season, mark
+  subject_id    uuid nullable   -- quest, stance, season, mark, or (for a *.corrected event) the event it corrects
   payload       jsonb
   idempotency_key text unique nullable
 ```
@@ -40,23 +41,30 @@ events
 **Invariants — these are enforced, not conventions:**
 
 - No UPDATE. No DELETE. Ever. No exceptions for corrections.
-- A correction is a new event of type `*.corrected` referencing the original.
+- A correction is a new event of type `*.corrected` referencing the original via `subject_id`, enforced by a CHECK constraint. Readers and rollups apply the latest correction for a given event in place of the original; the original row is never removed.
 - Every user action that represents conduct writes an event **before** any projection is updated, in the same transaction.
 - `payload` is additive-only; fields may be added, never repurposed.
 
 ### 2.2 Event types (v1)
 
 ```
-commitment.completed        quest.created
-commitment.missed           quest.step_completed
-condition.logged            quest.abandoned
-mark.recorded               probe.resolved       { double_down | fold | extend }
-stance.changed              outcome.achieved
-attention.event_logged      season.opened
-life.entry_logged           season.closed
-day.reported                recovery.started
-app.opened                  return.detected
+commitment.completed                  quest.created
+commitment.completed.corrected        quest.step_completed
+commitment.missed                     quest.abandoned
+condition.logged                      probe.resolved       { double_down | fold | extend }
+condition.logged.corrected            outcome.achieved
+mark.recorded                         season.opened
+mark.recorded.corrected               season.closed
+stance.changed                        recovery.started
+life.entry_logged                     return.detected
+life.entry_logged.corrected
+day.reported
+app.opened
 ```
+
+Correctable types are limited to the four above (plus `attention.event_logged`, corrected in its own table — see §2.7); the rest have no `*.corrected` counterpart.
+
+`app.opened` and `day.reported` are self-instrumentation (PRD §22): the app recording its own use, never conduct. They are excluded from every aggregate that feeds the Loop, the nightly report, XP, or momentum, same as the Attention layer (§2.7) — kept separately in `daily_rollup` only for the day-60 usage report.
 
 `commitment.missed` is written by a nightly job at the logical day boundary, not by the user. Absence must be recorded explicitly — a gap in the log is ambiguous, and momentum depends on the difference.
 
@@ -76,7 +84,9 @@ Test for this: a `rebuild` command that drops all rollups and recomputes from th
 
 ### 2.5 Time
 
-Single timezone, stored in config. A **logical day boundary at 04:00 local** — a session logged at 1am belongs to the previous day, which is how people actually experience nights. Every event carries `logical_day` computed at write time.
+Single timezone, stored in config (`ARC_TIMEZONE`, no default — a wrong guess would mislabel every logical day permanently). A **logical day boundary**, in local hours (`LOGICAL_DAY_BOUNDARY_HOUR`, in `lib/calibration.ts` — it buckets days, and day buckets feed momentum, so it is a calibration constant, not fixed clock semantics): a session ending before that hour belongs to the day that is ending, not the one beginning, which is how people actually experience nights.
+
+Every event carries `logical_day` **and** `timezone` computed at write time. `logical_day` is a cache; it is never trusted at read time. The rollup always recomputes it from `occurred_at` + the row's own `timezone`, so a bug in the boundary logic, or a correction to when something actually happened, is recoverable by rebuilding rather than by editing history — history itself is append-only and cannot be corrected in place.
 
 ### 2.6 Idempotency
 
@@ -123,7 +133,7 @@ One route, three states selected by time relative to the logical day boundary an
 
 **Day** — commitment rows. Tap completes and immediately presents the three resistance options inline; the completion is already written, resistance patches it. Optional one-line note behind a secondary tap. No other affordance may be added to this screen.
 
-**Night** — the report (PRD §12.3). Generated deterministically by the rollup job; the screen only renders it. Report length follows activity.
+**Night** — the report (PRD §12.3). Computed on demand from the log for the current logical day, deterministically, whenever the screen is opened; final once the logical day boundary passes. The switch to this state happens at a user-set **display hour**, which is a presentation choice only, not a data cutoff — there is no scheduled report-generation job. Report length follows activity.
 
 ### 4.3 Character sheet
 

@@ -1,14 +1,27 @@
 /**
  * All calibration constants for ARC (architecture-and-ux-v1.0.md §2.8).
  *
- * AGENTS.md hard rule 4: no numeric literal governing progression may appear
- * anywhere else in the codebase. XP values, level costs, momentum thresholds,
- * dormancy, tenure — everything here, nowhere else.
+ * AGENTS.md hard rule 4: no numeric literal governing system behaviour may
+ * appear outside this file. XP values, level costs, momentum thresholds,
+ * dormancy, tenure, clock semantics — everything here, nowhere else.
  *
  * Values marked PROVISIONAL are placeholders per PRD-v1.0.md §26 and are
  * expected to change once four weeks of real usage data exist. They must
  * still live only here when that happens.
  */
+
+// --- Time (architecture-and-ux-v1.0.md §2.5) --------------------------------
+
+/**
+ * Logical day boundary, in local hours. A session ending before this hour
+ * belongs to the day that is ending, not the one beginning — the user's
+ * sessions regularly run past midnight and into early morning
+ * (milestone-1.1-fixes.md item 4b), so 04:00 was too early.
+ *
+ * This governs day-bucketing, which momentum is computed from, so it lives
+ * here rather than in lib/logical-day.ts (AGENTS.md hard rule 4).
+ */
+export const LOGICAL_DAY_BOUNDARY_HOUR = 6;
 
 // --- XP (PRD-v1.0.md §10) — PROVISIONAL ------------------------------------
 

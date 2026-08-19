@@ -1,16 +1,30 @@
 /**
  * Logical day computation (architecture-and-ux-v1.0.md §2.5).
  *
- * A logical day boundary at 04:00 local time — a session logged at 1am
- * belongs to the previous day. This is a timekeeping rule, not a
- * progression calibration constant, so it does not live in
- * lib/calibration.ts (AGENTS.md hard rule 4 governs XP/level/momentum/etc,
- * not clock semantics).
+ * A logical day boundary at `LOGICAL_DAY_BOUNDARY_HOUR` local time — a
+ * session logged before that hour belongs to the previous day. The boundary
+ * hour lives in lib/calibration.ts, not here: it buckets days, and day
+ * buckets feed momentum, which makes it a tunable calibration value rather
+ * than fixed clock semantics (AGENTS.md hard rule 4,
+ * milestone-1.1-fixes.md item 5).
  */
-const LOGICAL_DAY_BOUNDARY_HOUR = 4;
+import { LOGICAL_DAY_BOUNDARY_HOUR } from "./calibration";
 
+/**
+ * The configured timezone. Throws if unset rather than guessing — a wrong
+ * guess would mislabel every logical_day permanently, since events are
+ * append-only and logical_day is derived from this at write time
+ * (milestone-1.1-fixes.md item 3).
+ */
 export function getTimezone(): string {
-  return process.env.ARC_TIMEZONE ?? "America/New_York";
+  const tz = process.env.ARC_TIMEZONE;
+  if (!tz) {
+    throw new Error(
+      "ARC_TIMEZONE is not set. There is no default: a wrong guess would " +
+        "mislabel every logical_day permanently. Set it in .env.local."
+    );
+  }
+  return tz;
 }
 
 /** Returns the logical day for `occurredAt` as a 'YYYY-MM-DD' string. */

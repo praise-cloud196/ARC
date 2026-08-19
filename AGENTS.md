@@ -24,7 +24,7 @@ Violating any of these is a defect regardless of whether tests pass.
 1. **The event log is append-only.** No UPDATE, no DELETE on `events`. Corrections are new events. There is no exception for fixing mistakes.
 2. **Conduct is written before projections**, in the same transaction.
 3. **Derived values are computed from the log**, never stored as authoritative counters. The `rebuild` command must reproduce identical state.
-4. **No numeric literal governing progression outside `lib/calibration.ts`.** XP values, level costs, momentum thresholds, dormancy, tenure, thresholds of any kind.
+4. **No numeric literal governing system behaviour may appear outside `lib/calibration.ts`.** XP values, level costs, momentum thresholds, dormancy, tenure, clock semantics (e.g. the logical day boundary hour), thresholds of any kind.
 5. **XP must stay removable.** Nothing in momentum, rank, Marks, history, or the nightly report may read XP or level values.
 6. **No day counters, streaks, or "clean since" dates anywhere in the product.** Especially in the Attention layer. Rolling density only.
 7. **No AI. No model SDK in the dependency tree.**
