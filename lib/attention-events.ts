@@ -7,11 +7,27 @@
  * the nightly report, XP, momentum, or rank is structurally impossible
  * rather than dependent on remembering to exclude a type
  * (milestone-1.1-fixes.md item 1).
+ *
+ * `stance.changed` lives here too, not in `events`: stances exist only for
+ * behaviours the user is trying to reduce (philosophy §10), so a stance
+ * change is Attention-layer data, and counting it as conduct could keep the
+ * character out of the Dormant state without any real conduct having
+ * occurred (milestone-1.2-fixes.md item 2).
  */
 import type { Pool, PoolClient } from "pg";
 import { computeLogicalDay, getTimezone } from "./logical-day";
 
-export const ATTENTION_EVENT_TYPES = ["attention.event_logged", "attention.event_logged.corrected"] as const;
+/** Event types whose values can be corrected. */
+export const CORRECTABLE_ATTENTION_EVENT_TYPES = ["attention.event_logged", "stance.changed"] as const;
+
+export type CorrectableAttentionEventType = (typeof CORRECTABLE_ATTENTION_EVENT_TYPES)[number];
+
+export const ATTENTION_EVENT_TYPES = [
+  "attention.event_logged",
+  "attention.event_logged.corrected",
+  "stance.changed",
+  "stance.changed.corrected",
+] as const;
 
 export type AttentionEventType = (typeof ATTENTION_EVENT_TYPES)[number];
 
@@ -39,7 +55,10 @@ export interface AppendedAttentionEvent {
   idempotencyKey: string | null;
 }
 
+/** A correction of a previously-written Attention event. */
 export interface NewAttentionCorrection {
+  /** The type of the event being corrected (not the `.corrected` type itself). */
+  correctsType: CorrectableAttentionEventType;
   correctsEventId: string;
   occurredAt?: Date;
   payload?: Record<string, unknown>;
@@ -103,26 +122,32 @@ export async function appendAttentionEvent(
 }
 
 /**
- * Appends a correction to a previously-logged Attention event. The original
- * is never removed. `occurredAt` and `timezone` default to the original
- * event's own values unless explicitly overridden — see appendCorrection in
- * lib/events.ts for why.
+ * Appends a correction. Never mutates the original event — the original is
+ * never removed; readers apply corrections by treating the latest
+ * correction for a given event as superseding it.
+ *
+ * `occurredAt` and `timezone` default to the original event's own values
+ * rather than to "now": a correction is normally fixing a value in
+ * `payload`, not relitigating when the thing happened. A caller correcting
+ * that too may still override it explicitly.
  */
 export async function appendAttentionCorrection(
   client: Queryable,
   correction: NewAttentionCorrection
 ): Promise<AppendedAttentionEvent> {
   const original = await client.query<{ occurred_at: Date; timezone: string }>(
-    `SELECT occurred_at, timezone FROM attention_events WHERE id = $1 AND type = 'attention.event_logged'`,
-    [correction.correctsEventId]
+    `SELECT occurred_at, timezone FROM attention_events WHERE id = $1 AND type = $2`,
+    [correction.correctsEventId, correction.correctsType]
   );
   const originalRow = original.rows[0];
   if (!originalRow) {
-    throw new Error(`No attention.event_logged event found with id ${correction.correctsEventId}`);
+    throw new Error(
+      `No ${correction.correctsType} event found with id ${correction.correctsEventId}`
+    );
   }
 
   return appendAttentionEvent(client, {
-    type: "attention.event_logged.corrected",
+    type: `${correction.correctsType}.corrected` as AttentionEventType,
     occurredAt: correction.occurredAt ?? originalRow.occurred_at,
     subjectId: correction.correctsEventId,
     payload: correction.payload,

@@ -55,14 +55,13 @@ condition.logged                      probe.resolved       { double_down | fold 
 condition.logged.corrected            outcome.achieved
 mark.recorded                         season.opened
 mark.recorded.corrected               season.closed
-stance.changed                        recovery.started
-life.entry_logged                     return.detected
-life.entry_logged.corrected
+life.entry_logged                     recovery.started
+life.entry_logged.corrected           return.detected
 day.reported
 app.opened
 ```
 
-Correctable types are limited to the four above (plus `attention.event_logged`, corrected in its own table — see §2.7); the rest have no `*.corrected` counterpart.
+Correctable types are limited to the four above (plus `attention.event_logged` and `stance.changed`, both corrected in the separate Attention table — see §2.7); the rest have no `*.corrected` counterpart.
 
 `app.opened` and `day.reported` are self-instrumentation (PRD §22): the app recording its own use, never conduct. They are excluded from every aggregate that feeds the Loop, the nightly report, XP, or momentum, same as the Attention layer (§2.7) — kept separately in `daily_rollup` only for the day-60 usage report.
 
@@ -100,6 +99,7 @@ Sensitive by nature. Requirements:
 - Excluded from every aggregate that feeds the Loop, the nightly report, or XP
 - Excluded by default from any future export
 - Stances with status `not_now` are filtered at the query layer, so the behaviour cannot appear in any surface even by accident
+- `stance.changed` lives in `attention_events`, not `events` (milestone-1.2-fixes.md item 2): stances exist only for behaviours the user is trying to reduce, so a stance change is Attention-layer data. Counting it as conduct in `daily_rollup` could keep the character out of the Dormant state without any real conduct having occurred.
 
 ### 2.8 Calibration constants
 

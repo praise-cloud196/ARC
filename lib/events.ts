@@ -8,7 +8,8 @@
  *
  * The Attention layer's events live in a separate table
  * (lib/attention-events.ts), never here — see architecture-and-ux-v1.0.md
- * §2.7 and milestone-1.1-fixes.md item 1.
+ * §2.7, milestone-1.1-fixes.md item 1, and milestone-1.2-fixes.md item 2
+ * (`stance.changed` is Attention-layer data too).
  */
 import type { Pool, PoolClient } from "pg";
 import { computeLogicalDay, getTimezone } from "./logical-day";
@@ -31,7 +32,6 @@ export const EVENT_TYPES = [
   "condition.logged.corrected",
   "mark.recorded",
   "mark.recorded.corrected",
-  "stance.changed",
   "life.entry_logged",
   "life.entry_logged.corrected",
   "day.reported",

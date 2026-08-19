@@ -7,6 +7,7 @@
  * (`npm run migrate`). Skipped automatically when DATABASE_URL is unset.
  */
 import { afterAll, describe, expect, it } from "vitest";
+import { appendAttentionEvent } from "../lib/attention-events";
 import { getPool } from "../lib/db";
 import { appendCorrection, appendEvent } from "../lib/events";
 import { rebuildDailyRollup } from "../lib/rollup";
@@ -116,6 +117,41 @@ describe.skipIf(!hasDb)("rebuild equivalence", () => {
         logicalDay: "2026-02-10",
         eventCount: 1,
         domainCounts: { career: 1 },
+        instrumentationCount: 0,
+      });
+
+      await client.query("ROLLBACK");
+    } finally {
+      client.release();
+    }
+  });
+
+  it("cannot observe a stance change through the rollup (milestone-1.2-fixes.md item 2)", async () => {
+    const pool = getPool();
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      await appendEvent(client, {
+        type: "commitment.completed",
+        occurredAt: new Date("2026-03-12T10:00:00-05:00"),
+        domain: "body",
+        payload: { tier: 1 },
+      });
+      await appendAttentionEvent(client, {
+        type: "stance.changed",
+        occurredAt: new Date("2026-03-12T11:00:00-05:00"),
+        payload: { to: "reducing" },
+      });
+
+      const rows = await rebuildDailyRollup(client);
+      const mar12 = rows.find((row) => row.logicalDay === "2026-03-12");
+
+      // Only the commitment counts; the stance change is invisible here.
+      expect(mar12).toEqual({
+        logicalDay: "2026-03-12",
+        eventCount: 1,
+        domainCounts: { body: 1 },
         instrumentationCount: 0,
       });
 
