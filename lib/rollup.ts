@@ -17,7 +17,7 @@
  */
 import type { PoolClient } from "pg";
 import { INSTRUMENTATION_EVENT_TYPES } from "./events";
-import { resolveEffectiveEvents } from "./effective-events";
+import { resolveEffectiveEventsFromDb } from "./effective-events";
 
 export interface RollupRow {
   logicalDay: string;
@@ -36,7 +36,7 @@ interface DayBucket {
 
 /** Drops and recomputes daily_rollup from `events`. Caller controls the transaction. */
 export async function rebuildDailyRollup(client: PoolClient): Promise<RollupRow[]> {
-  const effectiveEvents = await resolveEffectiveEvents(client);
+  const effectiveEvents = await resolveEffectiveEventsFromDb(client);
 
   const days = new Map<string, DayBucket>();
   const bucketFor = (day: string): DayBucket => {

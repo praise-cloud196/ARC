@@ -16,26 +16,22 @@
  */
 import type { PoolClient } from "pg";
 import { XP_TIER_VALUES, levelForXp, type XpTier } from "./calibration";
-import { resolveEffectiveEvents } from "./effective-events";
+import {
+  fetchRawEventRows,
+  resolveEffectiveEvents,
+  type EffectiveEvent,
+  type RawEventRow,
+} from "./effective-events";
 import type { Domain } from "./domains";
 
 const XP_EVENT_TYPES = new Set(["commitment.completed", "quest.step_completed"]);
-const XP_CORRECTED_EVENT_TYPES = [...XP_EVENT_TYPES].map((type) => `${type}.corrected`);
 
 function isXpTier(value: unknown): value is XpTier {
   return typeof value === "number" && value in XP_TIER_VALUES;
 }
 
-/**
- * Total XP for one domain, computed from the full event log with corrections
- * applied. This is the *current* total — milestone-2.1-fixes.md item 1: it
- * can fall after a downward correction, and that's correct, honest
- * behaviour for a number labelled "current XP". `computeDomainLevel` below
- * is the one that must never fall.
- */
-export async function computeDomainXp(client: PoolClient, domain: Domain): Promise<number> {
-  const events = await resolveEffectiveEvents(client);
-
+/** Pure — no I/O. See `computeDomainXp` below for what this computes and why. */
+export function computeDomainXpFromEvents(events: EffectiveEvent[], domain: Domain): number {
   let xp = 0;
   for (const event of events) {
     if (event.domain !== domain) continue;
@@ -50,26 +46,37 @@ export async function computeDomainXp(client: PoolClient, domain: Domain): Promi
     }
     xp += XP_TIER_VALUES[tier];
   }
-
   return xp;
 }
 
-interface RawXpEventRow {
-  id: string;
-  type: string;
-  domain: string | null;
-  subject_id: string | null;
-  payload: Record<string, unknown>;
+/**
+ * Total XP for one domain, computed from the full event log with corrections
+ * applied. This is the *current* total — milestone-2.1-fixes.md item 1: it
+ * can fall after a downward correction, and that's correct, honest
+ * behaviour for a number labelled "current XP". `computeDomainLevel` below
+ * is the one that must never fall.
+ *
+ * Fetches and folds the log itself — fine for a standalone caller, but a
+ * caller that also needs other derived values from the same request should
+ * fetch once (`fetchRawEventRows` + `resolveEffectiveEvents`) and call
+ * `computeDomainXpFromEvents` directly instead (milestone-4-spec.md §1;
+ * lib/identity.ts does this).
+ */
+export async function computeDomainXp(client: PoolClient, domain: Domain): Promise<number> {
+  const events = resolveEffectiveEvents(await fetchRawEventRows(client));
+  return computeDomainXpFromEvents(events, domain);
 }
 
 /**
- * The domain's level as a high-water mark (milestone-2.1-fixes.md item 1;
- * AGENTS.md hard rule 12 — nothing built is ever taken away, including by
- * the user's own honesty in correcting a mis-logged entry).
+ * Pure — no I/O. The domain's level as a high-water mark
+ * (milestone-2.1-fixes.md item 1; AGENTS.md hard rule 12 — nothing built is
+ * ever taken away, including by the user's own honesty in correcting a
+ * mis-logged entry).
  *
- * Replays the *raw* log — originals and corrections as separate rows — in
- * `recorded_at` order (the true, gapless append order of an immutable log;
- * `occurred_at` is just a user-editable label and can't serve this purpose)
+ * Replays the *raw* rows — originals and corrections as separate rows,
+ * re-sorted here by `recorded_at` (the true, gapless append order of an
+ * immutable log; `occurred_at` is just a user-editable label and can't
+ * serve this purpose; `fetchRawEventRows` makes no ordering guarantee)
  * rebuilding "what the domain's total XP was known to be at each point the
  * log grew" and tracking the max level that total ever implied.
  *
@@ -80,14 +87,13 @@ interface RawXpEventRow {
  * The high point only exists in the log's real write history, which is why
  * this walks raw rows in `recorded_at` order instead.
  */
-export async function computeDomainLevel(client: PoolClient, domain: Domain): Promise<number> {
-  const { rows } = await client.query<RawXpEventRow>(
-    `SELECT id, type, domain, subject_id, payload
-     FROM events
-     WHERE type = ANY($1)
-     ORDER BY recorded_at ASC`,
-    [[...XP_EVENT_TYPES, ...XP_CORRECTED_EVENT_TYPES]]
-  );
+export function computeDomainLevelFromRows(rows: RawEventRow[], domain: Domain): number {
+  const relevant = rows
+    .filter((row) => {
+      const bareType = row.type.endsWith(".corrected") ? row.type.slice(0, -".corrected".length) : row.type;
+      return XP_EVENT_TYPES.has(bareType);
+    })
+    .sort((a, b) => a.recorded_at.getTime() - b.recorded_at.getTime());
 
   // Current known {tier, domain} per original event id, updated in place as
   // corrections for it are encountered further down the log. `totalXp`
@@ -97,7 +103,7 @@ export async function computeDomainLevel(client: PoolClient, domain: Domain): Pr
   let totalXp = 0;
   let maxLevel = 1;
 
-  for (const row of rows) {
+  for (const row of relevant) {
     const isCorrection = row.type.endsWith(".corrected");
     const originalId = isCorrection ? row.subject_id : row.id;
     if (!originalId) continue; // db/migrations/0002_attention_split.sql guarantees this can't happen
@@ -118,4 +124,14 @@ export async function computeDomainLevel(client: PoolClient, domain: Domain): Pr
   }
 
   return maxLevel;
+}
+
+/**
+ * Fetches the log itself — fine for a standalone caller, but a caller that
+ * also needs other derived values from the same request should fetch once
+ * and call `computeDomainLevelFromRows` directly instead
+ * (milestone-4-spec.md §1; lib/identity.ts does this).
+ */
+export async function computeDomainLevel(client: PoolClient, domain: Domain): Promise<number> {
+  return computeDomainLevelFromRows(await fetchRawEventRows(client), domain);
 }

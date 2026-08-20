@@ -13,7 +13,7 @@
 import type { PoolClient } from "pg";
 import { DOMAIN_DORMANCY_DAYS } from "./calibration";
 import { daysBetween } from "./day-math";
-import { resolveEffectiveEvents } from "./effective-events";
+import { fetchRawEventRows, resolveEffectiveEvents, type EffectiveEvent } from "./effective-events";
 import type { Domain } from "./domains";
 
 // Only these event types ever carry a domain, so only they can count as
@@ -22,10 +22,8 @@ import type { Domain } from "./domains";
 // (lib/momentum.ts) which counts only positive conduct too.
 const DOMAIN_CONDUCT_EVENT_TYPES = new Set(["commitment.completed", "quest.step_completed", "mark.recorded"]);
 
-/** The most recent logical day with conduct in `domain`, or null if there has never been any. */
-export async function lastConductLogicalDay(client: PoolClient, domain: Domain): Promise<string | null> {
-  const events = await resolveEffectiveEvents(client);
-
+/** Pure — no I/O. See `lastConductLogicalDay` below. */
+export function lastConductLogicalDayFromEvents(events: EffectiveEvent[], domain: Domain): string | null {
   let latest: string | null = null;
   for (const event of events) {
     if (event.domain !== domain) continue;
@@ -35,6 +33,18 @@ export async function lastConductLogicalDay(client: PoolClient, domain: Domain):
     }
   }
   return latest;
+}
+
+/**
+ * The most recent logical day with conduct in `domain`, or null if there
+ * has never been any. Fetches and folds the log itself — a caller also
+ * needing other derived values from the same request should fetch once and
+ * call `lastConductLogicalDayFromEvents` directly instead
+ * (milestone-4-spec.md §1).
+ */
+export async function lastConductLogicalDay(client: PoolClient, domain: Domain): Promise<string | null> {
+  const events = resolveEffectiveEvents(await fetchRawEventRows(client));
+  return lastConductLogicalDayFromEvents(events, domain);
 }
 
 /** Whether `domain` is dormant as of `asOfLogicalDay`, given the domain's last conduct day (or null if it never had any). */

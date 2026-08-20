@@ -7,7 +7,7 @@
  */
 import type { Pool, PoolClient } from "pg";
 import { appendEvent, type AppendedEvent } from "./events";
-import { resolveEffectiveEvents } from "./effective-events";
+import { fetchRawEventRows, resolveEffectiveEvents, type EffectiveEvent } from "./effective-events";
 import { getTimezone } from "./logical-day";
 import type { Domain } from "./domains";
 
@@ -44,15 +44,8 @@ export interface RetroactiveMarkStats {
   domains: Domain[];
 }
 
-/**
- * Count and distinct domains of retroactive Marks, corrections applied —
- * milestone-3-spec.md §6's `retroMarks` / `retroDomains`, and the §3
- * minimum-3 gate. Uses resolveEffectiveEvents (not a raw count query)
- * because a correction could change a Mark's domain or its `retroactive`
- * flag, and both must reflect the corrected value.
- */
-export async function retroactiveMarkStats(client: PoolClient): Promise<RetroactiveMarkStats> {
-  const events = await resolveEffectiveEvents(client);
+/** Pure — no I/O. See `retroactiveMarkStats` below. */
+export function retroactiveMarkStatsFromEvents(events: EffectiveEvent[]): RetroactiveMarkStats {
   const domains = new Set<Domain>();
   let count = 0;
 
@@ -64,4 +57,18 @@ export async function retroactiveMarkStats(client: PoolClient): Promise<Retroact
   }
 
   return { count, domains: [...domains] };
+}
+
+/**
+ * Count and distinct domains of retroactive Marks, corrections applied —
+ * milestone-3-spec.md §6's `retroMarks` / `retroDomains`, and the §3
+ * minimum-3 gate. Folds the log itself (not a raw count query) because a
+ * correction could change a Mark's domain or its `retroactive` flag, and
+ * both must reflect the corrected value. A caller also needing other
+ * derived values from the same request should fetch once and call
+ * `retroactiveMarkStatsFromEvents` directly instead (milestone-4-spec.md §1).
+ */
+export async function retroactiveMarkStats(client: PoolClient): Promise<RetroactiveMarkStats> {
+  const events = resolveEffectiveEvents(await fetchRawEventRows(client));
+  return retroactiveMarkStatsFromEvents(events);
 }

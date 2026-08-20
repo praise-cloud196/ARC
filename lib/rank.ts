@@ -22,13 +22,25 @@ import {
   RANKS,
   type Rank,
 } from "./calibration";
-import { retroactiveMarkStats } from "./marks";
+import { fetchRawEventRows, resolveEffectiveEvents, type EffectiveEvent, type RawEventRow } from "./effective-events";
+import { retroactiveMarkStatsFromEvents } from "./marks";
 
+/** Pure — no I/O. See `getCurrentRank` below. */
+export function deriveCurrentRankFromRows(rows: RawEventRow[]): Rank {
+  for (const row of rows) {
+    if (row.type === "audit.completed") return (row.payload as { startingRank: Rank }).startingRank;
+  }
+  return DEFAULT_STARTING_RANK;
+}
+
+/**
+ * Fetches the log itself — fine for a standalone caller, but a caller also
+ * needing other derived values from the same request should fetch once and
+ * call `deriveCurrentRankFromRows` directly instead (milestone-4-spec.md §1;
+ * lib/identity.ts does this).
+ */
 export async function getCurrentRank(client: PoolClient): Promise<Rank> {
-  const result = await client.query<{ payload: { startingRank: Rank } }>(
-    `SELECT payload FROM events WHERE type = 'audit.completed' LIMIT 1`
-  );
-  return result.rows[0]?.payload.startingRank ?? DEFAULT_STARTING_RANK;
+  return deriveCurrentRankFromRows(await fetchRawEventRows(client));
 }
 
 export interface ProposedStartingRank {
@@ -40,13 +52,13 @@ export interface ProposedStartingRank {
 }
 
 /**
- * milestone-3-spec.md §6's deterministic proposal rule, capped at
- * AUDIT_STARTING_RANK_CAP regardless of how many retroactive Marks qualify
- * — B/A/S can only be earned through season closes, never granted by
- * self-report.
+ * Pure — no I/O. milestone-3-spec.md §6's deterministic proposal rule,
+ * capped at AUDIT_STARTING_RANK_CAP regardless of how many retroactive
+ * Marks qualify — B/A/S can only be earned through season closes, never
+ * granted by self-report.
  */
-export async function computeProposedStartingRank(client: PoolClient): Promise<ProposedStartingRank> {
-  const { count: retroMarks, domains } = await retroactiveMarkStats(client);
+export function computeProposedStartingRankFromEvents(events: EffectiveEvent[]): ProposedStartingRank {
+  const { count: retroMarks, domains } = retroactiveMarkStatsFromEvents(events);
   const retroDomains = domains.length;
 
   let rank: Rank;
@@ -64,6 +76,12 @@ export async function computeProposedStartingRank(client: PoolClient): Promise<P
     retroDomains,
     retroMarks,
   };
+}
+
+/** Fetches and folds the log itself; see `computeProposedStartingRankFromEvents` for the pure version. */
+export async function computeProposedStartingRank(client: PoolClient): Promise<ProposedStartingRank> {
+  const events = resolveEffectiveEvents(await fetchRawEventRows(client));
+  return computeProposedStartingRankFromEvents(events);
 }
 
 /** RANKS index — higher is better. Used to enforce "adjust down, never up" (milestone-3-spec.md §6). */

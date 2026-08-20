@@ -14,15 +14,28 @@
  * - Correction events themselves never appear in the result — they exist
  *   only to be folded into the original they reference.
  *
- * Shared by lib/rollup.ts and lib/xp.ts (and anything else that needs "what
- * actually happened, after corrections") so this resolution has exactly one
- * implementation. Attention-layer events never enter this: they live in the
- * separate `attention_events` table (lib/attention-events.ts) and this
- * module never queries it.
+ * Split into `fetchRawEventRows` (the one DB round trip) and
+ * `resolveEffectiveEvents` (a pure in-memory fold) since milestone-4-spec.md
+ * §1: a caller needing several derived values from one request — the
+ * morning screen needing per-domain XP, level high-water marks, marks
+ * count, and tenure all at once (lib/identity.ts) — must fetch the raw rows
+ * once and run every computation over that same in-memory array, not issue
+ * a fresh query per value. lib/xp.ts's `computeDomainLevel` needs the *raw*
+ * rows (unfolded, in recorded_at order) rather than this module's folded
+ * output — see its own comment for why — so both shapes are exported.
+ *
+ * Shared by lib/rollup.ts, lib/xp.ts, lib/dormancy.ts, lib/marks.ts, and
+ * lib/identity.ts (and anything else that needs "what actually happened,
+ * after corrections") so this resolution has exactly one implementation.
+ * Attention-layer events never enter this: they live in the separate
+ * `attention_events` table (lib/attention-events.ts) and this module never
+ * queries it.
  */
-import type { PoolClient } from "pg";
+import type { Pool, PoolClient } from "pg";
 import { computeLogicalDay } from "./logical-day";
 import type { EventType } from "./events";
+
+type Queryable = Pool | PoolClient;
 
 export interface EffectiveEvent {
   id: string;
@@ -34,7 +47,7 @@ export interface EffectiveEvent {
   payload: Record<string, unknown>;
 }
 
-interface RawEventRow {
+export interface RawEventRow {
   id: string;
   type: EventType;
   occurred_at: Date;
@@ -47,11 +60,16 @@ interface RawEventRow {
 
 const CORRECTED_SUFFIX = ".corrected";
 
-export async function resolveEffectiveEvents(client: PoolClient): Promise<EffectiveEvent[]> {
+/** The one query: every row of `events`, unfolded. Callers needing more than one derived value fetch this once and pass the result to every pure computation that needs it. */
+export async function fetchRawEventRows(client: Queryable): Promise<RawEventRow[]> {
   const { rows } = await client.query<RawEventRow>(
     `SELECT id, type, occurred_at, timezone, domain, subject_id, payload, recorded_at FROM events`
   );
+  return rows;
+}
 
+/** Pure — no I/O. Folds corrections into their originals; see this module's header comment for the rules. */
+export function resolveEffectiveEvents(rows: RawEventRow[]): EffectiveEvent[] {
   // Latest correction per (original event id, type it corrects).
   const latestCorrection = new Map<string, RawEventRow>();
   const originals: RawEventRow[] = [];
@@ -85,4 +103,9 @@ export async function resolveEffectiveEvents(client: PoolClient): Promise<Effect
       payload,
     };
   });
+}
+
+/** Convenience for callers that only need one derived value: fetch and fold in one call. */
+export async function resolveEffectiveEventsFromDb(client: Queryable): Promise<EffectiveEvent[]> {
+  return resolveEffectiveEvents(await fetchRawEventRows(client));
 }
