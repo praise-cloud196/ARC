@@ -114,7 +114,18 @@ CREATE TABLE events (
       AND array_position(ARRAY['E', 'D', 'C', 'B', 'A', 'S'], payload->>'startingRank')
           <= array_position(ARRAY['E', 'D', 'C', 'B', 'A', 'S'], payload->>'proposedRank')
     )
-  )
+  ),
+  -- milestone-4-spec.md §3: resistance is optional (the tap writes the
+  -- completion before resistance is chosen — a correction patches it in
+  -- moments later), but its value is validated when given.
+  CHECK (
+    type NOT IN ('commitment.completed', 'commitment.completed.corrected')
+    OR NOT (payload ? 'resistance')
+    OR payload->>'resistance' IN ('easy', 'normal', 'against_resistance')
+  ),
+  -- commitment.missed (milestone-4-spec.md §6): written by the boundary
+  -- job only, subject_id points at the commitments row.
+  CHECK (type <> 'commitment.missed' OR subject_id IS NOT NULL)
 );
 
 -- "Written once" (milestone-3-spec.md §1): a unique index on a constant
@@ -251,6 +262,50 @@ CREATE TABLE seasons (
 
 -- At most one open season at a time.
 CREATE UNIQUE INDEX seasons_one_open ON seasons ((true)) WHERE status = 'open';
+
+-- milestone-4-spec.md §0.1/§3: moved up from milestone 5 — the Loop can't
+-- display or complete anything without commitments. week_start is always a
+-- Monday (lib/day-math.ts's startOfWeek); a new week means a new row, not a
+-- recurrence rule.
+CREATE TABLE commitments (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  domain        text NOT NULL CHECK (domain IN ('career', 'body', 'attention')),
+  label         text NOT NULL CHECK (label <> ''),
+  tier          integer NOT NULL CHECK (tier IN (1, 2, 3)),
+  weekly_target integer NOT NULL CHECK (weekly_target > 0),
+  week_start    date NOT NULL,
+  active_from   date NOT NULL,
+  active_until  date,
+  created_at    timestamptz NOT NULL DEFAULT clock_timestamp(),
+  CHECK (active_until IS NULL OR active_until >= active_from)
+);
+
+CREATE INDEX commitments_week_start_idx ON commitments (week_start);
+
+-- Weekly lock, enforced at the data layer (PRD §13, AGENTS.md hard rule 9):
+-- only the four declaration fields, only for the week currently in
+-- progress. date_trunc('week', CURRENT_DATE) uses the database session's
+-- timezone, not ARC_TIMEZONE — an approximation acceptable for a
+-- defense-in-depth backstop; lib/commitments.ts's write path is the
+-- timezone-and-logical-day-aware guard normal operation goes through.
+CREATE OR REPLACE FUNCTION forbid_current_week_commitment_edit() RETURNS trigger AS $$
+BEGIN
+  IF OLD.week_start = date_trunc('week', CURRENT_DATE)::date
+     AND (
+       NEW.label IS DISTINCT FROM OLD.label
+       OR NEW.tier IS DISTINCT FROM OLD.tier
+       OR NEW.weekly_target IS DISTINCT FROM OLD.weekly_target
+       OR NEW.domain IS DISTINCT FROM OLD.domain
+     ) THEN
+    RAISE EXCEPTION 'commitment declaration fields are immutable during their locked week (week_start = %)', OLD.week_start;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER commitments_weekly_lock
+  BEFORE UPDATE ON commitments
+  FOR EACH ROW EXECUTE FUNCTION forbid_current_week_commitment_edit();
 
 -- Migration bookkeeping. Created directly by scripts/migrate.ts, not by a
 -- numbered migration file (it has to exist before any migration can be

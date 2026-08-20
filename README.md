@@ -17,6 +17,12 @@ Schema changes live in `db/migrations/*.sql`, applied in order and tracked in `s
 
 `npm run rebuild` drops and recomputes `daily_rollup` from the event log. This is always safe: the rollup is a cache, never a source of truth.
 
+## The boundary job
+
+`npm run boundary-job` (`scripts/boundary-job.ts` / `lib/boundary-job.ts`) is the only scheduled job in the product (AGENTS.md hard rule 8, milestone-4-spec.md §6): once per logical day, it writes `commitment.missed` for every commitment whose week just ended without meeting its `weekly_target`, then rebuilds `daily_rollup`.
+
+In production it's triggered by Vercel Cron (`vercel.json`) calling `GET /api/cron/boundary`, authenticated with a bearer token compared against `CRON_SECRET`. The cron schedule (`0 5 * * *`, i.e. 05:00 UTC) is a fixed approximation of `LOGICAL_DAY_BOUNDARY_HOUR` (06:00) in `ARC_TIMEZONE` (`Africa/Lagos`, UTC+1, no DST) — **if either changes, `vercel.json`'s schedule has to be updated by hand**, the same coupling the weekly-lock trigger's `CURRENT_DATE` approximation has (`db/migrations/0007_commitments.sql`).
+
 ## Backups
 
 The event log (`events`, `attention_events`) is the only irreplaceable data in this product — everything else is derived or can be re-declared. Neon point-in-time restore is the backstop if the migration guard above is ever overridden incorrectly or bypassed.

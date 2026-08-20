@@ -23,6 +23,16 @@
  */
 export const LOGICAL_DAY_BOUNDARY_HOUR = 6;
 
+/**
+ * How long the Today surface stays in its Morning state after the logical
+ * day boundary before switching to Day (milestone-4-spec.md §5). PRD §12.1
+ * describes Morning as a quick, read-only glance but doesn't give a clock
+ * duration for it — this is a provisional interpretation, not a spec'd
+ * value, flagged for review the same way milestone-2-spec.md §2's original
+ * XP curve was.
+ */
+export const MORNING_WINDOW_HOURS = 3;
+
 // --- XP (PRD-v1.0.md §10) — PROVISIONAL ------------------------------------
 
 export const XP_TIER_VALUES = {

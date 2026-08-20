@@ -27,6 +27,23 @@ export function getTimezone(): string {
   return tz;
 }
 
+/**
+ * The user-set hour (0-23, local time) Today switches to its Night state
+ * (PRD §12.3) — a presentation choice only, never a data cutoff (the report
+ * itself is always computed on demand). Defaults to 20:00 if unset; unlike
+ * ARC_TIMEZONE this has a safe default because getting it wrong only
+ * changes when a screen looks different, not how any data is labelled.
+ */
+export function getDisplayHour(): number {
+  const raw = process.env.ARC_DISPLAY_HOUR;
+  if (!raw) return 20;
+  const hour = Number(raw);
+  if (!Number.isInteger(hour) || hour < 0 || hour > 23) {
+    throw new Error(`ARC_DISPLAY_HOUR must be an integer 0-23; got ${raw}`);
+  }
+  return hour;
+}
+
 /** Returns the logical day for `occurredAt` as a 'YYYY-MM-DD' string. */
 export function computeLogicalDay(occurredAt: Date, timeZone: string = getTimezone()): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
