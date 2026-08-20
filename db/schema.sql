@@ -24,6 +24,16 @@ CREATE TABLE events (
                     'mark.recorded.corrected',
                     'life.entry_logged',
                     'life.entry_logged.corrected',
+                    -- Peers by design (PRD §9), zero XP either way — see
+                    -- lib/xp.ts's XP_EVENT_TYPES, which reads neither.
+                    'metric.recorded',
+                    'metric.recorded.corrected',
+                    'note.recorded',
+                    'note.recorded.corrected',
+                    -- Marks the end of onboarding. Written once (see
+                    -- events_audit_completed_once below) — no `.corrected`
+                    -- variant, like the other one-time boundary events.
+                    'audit.completed',
                     'day.reported',
                     'app.opened',
                     'quest.created',
@@ -65,8 +75,52 @@ CREATE TABLE events (
   CHECK (
     type NOT IN ('commitment.completed', 'commitment.completed.corrected', 'quest.step_completed')
     OR (payload ? 'tier' AND payload->>'tier' IN ('1', '2', '3'))
+  ),
+  -- milestone-3-spec.md §1: metric.recorded / note.recorded are domain-scoped.
+  CHECK (
+    type NOT IN ('metric.recorded', 'metric.recorded.corrected', 'note.recorded', 'note.recorded.corrected')
+    OR domain IS NOT NULL
+  ),
+  -- payload: { metric, value, unit } (milestone-3-spec.md §1).
+  CHECK (
+    type NOT IN ('metric.recorded', 'metric.recorded.corrected')
+    OR (payload ? 'metric' AND payload ? 'value' AND payload ? 'unit')
+  ),
+  CHECK (
+    type NOT IN ('note.recorded', 'note.recorded.corrected')
+    OR (payload ? 'note' AND payload->>'note' <> '')
+  ),
+  -- PRD §14: every Mark requires a note, not only retroactive ones.
+  CHECK (
+    type NOT IN ('mark.recorded', 'mark.recorded.corrected')
+    OR (payload ? 'note' AND payload->>'note' <> '')
+  ),
+  -- Only kind 'outcome' exists until milestone 5 adds
+  -- Commitment/Undertaking/Probe (milestone-3-spec.md §2 step 5).
+  CHECK (
+    type <> 'quest.created'
+    OR (payload->>'kind' = 'outcome' AND payload ? 'statement' AND payload->>'statement' <> '')
+  ),
+  -- milestone-3-spec.md §6: starting rank capped at C, adjustable down from
+  -- the proposal only, never up. array_position over RANKS' fixed order
+  -- (lib/calibration.ts) mirrors that order on the SQL side.
+  CHECK (
+    type <> 'audit.completed'
+    OR (
+      payload->>'proposedRank' IN ('E', 'D', 'C', 'B', 'A', 'S')
+      AND payload->>'startingRank' IN ('E', 'D', 'C', 'B', 'A', 'S')
+      AND array_position(ARRAY['E', 'D', 'C', 'B', 'A', 'S'], payload->>'proposedRank')
+          <= array_position(ARRAY['E', 'D', 'C', 'B', 'A', 'S'], 'C')
+      AND array_position(ARRAY['E', 'D', 'C', 'B', 'A', 'S'], payload->>'startingRank')
+          <= array_position(ARRAY['E', 'D', 'C', 'B', 'A', 'S'], payload->>'proposedRank')
+    )
   )
 );
+
+-- "Written once" (milestone-3-spec.md §1): a unique index on a constant
+-- expression, scoped by the partial WHERE, permits at most one row of this
+-- type ever.
+CREATE UNIQUE INDEX events_audit_completed_once ON events ((true)) WHERE type = 'audit.completed';
 
 CREATE INDEX events_logical_day_idx ON events (logical_day);
 CREATE INDEX events_type_idx ON events (type);
@@ -155,6 +209,48 @@ CREATE TABLE daily_rollup (
   instrumentation_count integer NOT NULL DEFAULT 0,
   computed_at           timestamptz NOT NULL DEFAULT now()
 );
+
+-- Direction tables (architecture-and-ux-v1.0.md §2.3): current state,
+-- freely editable, no append-only triggers — history lives in `events` /
+-- `attention_events` via the paired event each write also appends.
+
+-- milestone-3-spec.md §4: one row per behaviour; `stance.changed` in
+-- `attention_events` carries the history. `not_now` rows exist here like
+-- any other row — the filter is enforced by lib/stances.ts's query
+-- functions, not by keeping such rows out of the table (AGENTS.md hard
+-- rule 10).
+CREATE TABLE stances (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  behaviour  text NOT NULL UNIQUE,
+  stance     text NOT NULL CHECK (stance IN ('observing', 'reducing', 'abstaining', 'not_now')),
+  created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  updated_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+
+-- milestone-3-spec.md §2 step 5: only kind 'outcome' (the three 2027
+-- statements) exists in milestone 3. Commitment/Undertaking/Probe columns
+-- arrive with milestone 5 as new ALTERs, not speculatively now.
+CREATE TABLE quests (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  kind       text NOT NULL CHECK (kind = 'outcome'),
+  statement  text NOT NULL CHECK (statement <> ''),
+  status     text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'achieved', 'abandoned')),
+  created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+
+-- milestone-3-spec.md §2 step 6: Season 01's opening only. The fuller
+-- open-declaration fields PRD §15 describes belong to milestone 7's actual
+-- open/close wizard — see db/migrations/0006_baseline_audit.sql's comment.
+CREATE TABLE seasons (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  number     integer NOT NULL UNIQUE CHECK (number > 0),
+  status     text NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'closed')),
+  opened_at  timestamptz NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+
+-- At most one open season at a time.
+CREATE UNIQUE INDEX seasons_one_open ON seasons ((true)) WHERE status = 'open';
 
 -- Migration bookkeeping. Created directly by scripts/migrate.ts, not by a
 -- numbered migration file (it has to exist before any migration can be

@@ -20,6 +20,8 @@ export const CORRECTABLE_EVENT_TYPES = [
   "condition.logged",
   "mark.recorded",
   "life.entry_logged",
+  "metric.recorded",
+  "note.recorded",
 ] as const;
 
 export type CorrectableEventType = (typeof CORRECTABLE_EVENT_TYPES)[number];
@@ -34,6 +36,17 @@ export const EVENT_TYPES = [
   "mark.recorded.corrected",
   "life.entry_logged",
   "life.entry_logged.corrected",
+  // milestone-3-spec.md §1: peers by design, not a comment attached to a
+  // number (PRD §9) — zero XP either way (lib/xp.ts's XP_EVENT_TYPES
+  // doesn't include either).
+  "metric.recorded",
+  "metric.recorded.corrected",
+  "note.recorded",
+  "note.recorded.corrected",
+  // Marks the end of onboarding. Written once (db/migrations/0006_baseline_audit.sql's
+  // events_audit_completed_once) — no `.corrected` variant, like the other
+  // one-time boundary events below.
+  "audit.completed",
   "day.reported",
   "app.opened",
   "quest.created",

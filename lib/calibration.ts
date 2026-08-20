@@ -106,6 +106,22 @@ export const RANK_MIN_TENURE_SEASONS = 1;
 export const RANK_MIN_NEW_MARK_DOMAINS = 2;
 export const RANK_MAX_DORMANT_DOMAINS_AT_CLOSE = 1;
 
+// --- Baseline audit (milestone-3-spec.md §3, §6) — PROVISIONAL --------------
+
+/** A wizard abandoned before this many retroactive Marks are logged cannot advance past that step. */
+export const AUDIT_MIN_RETROACTIVE_MARKS = 3;
+
+/** Starting rank can never exceed this, regardless of how many retroactive Marks qualify (§6). */
+export const AUDIT_STARTING_RANK_CAP: Rank = "C";
+
+/** retroDomains >= this and retroMarks >= AUDIT_RANK_C_MIN_MARKS -> proposed rank C. */
+export const AUDIT_RANK_C_MIN_DOMAINS = 3;
+export const AUDIT_RANK_C_MIN_MARKS = 6;
+
+/** retroDomains >= this and retroMarks >= AUDIT_RANK_D_MIN_MARKS -> proposed rank D. Otherwise E. */
+export const AUDIT_RANK_D_MIN_DOMAINS = 2;
+export const AUDIT_RANK_D_MIN_MARKS = 3;
+
 // --- Seasons (PRD-v1.0.md §15) — length band PROVISIONAL -------------------
 
 export const SEASON_MIN_WEEKS = 6;

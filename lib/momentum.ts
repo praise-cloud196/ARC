@@ -25,7 +25,13 @@ import { addDays, daysBetweenInclusive } from "./day-math";
  * Conduct for the Dormant check (milestone-2-spec.md §3.4). Explicitly
  * excludes `app.opened` / `day.reported` (self-instrumentation) and
  * everything in `attention_events` — opening the app is not activity, and
- * Attention data never feeds momentum (AGENTS.md hard rule 11).
+ * Attention data never feeds momentum (AGENTS.md hard rule 11). Also
+ * excludes `note.recorded`, `metric.recorded`, and `audit.completed`
+ * (milestone-3-spec.md §5): completing the audit is not evidence of
+ * agency, and a user who does it and then disappears for a fortnight must
+ * read as Dormant, not Strong. `mark.recorded` remains conduct even for a
+ * retroactive Mark — §5 is explicit that only the three new types above
+ * are excluded.
  */
 export const MOMENTUM_CONDUCT_EVENT_TYPES = [
   "commitment.completed",

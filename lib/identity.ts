@@ -11,6 +11,7 @@ import type { PoolClient } from "pg";
 import type { Rank } from "./calibration";
 import { daysBetweenInclusive } from "./day-math";
 import { SCORED_DOMAINS, type ScoredDomain } from "./domains";
+import { resolveEffectiveEvents } from "./effective-events";
 import { computeLogicalDay, getTimezone } from "./logical-day";
 import { getCurrentRank } from "./rank";
 import { computeDomainLevel } from "./xp";
@@ -41,20 +42,26 @@ export async function computeIdentity(client: PoolClient, asOf: Date = new Date(
   );
   const marksCount = marksResult.rows[0]?.count ?? 0;
 
-  const firstEventResult = await client.query<{ first_occurred_at: Date | null }>(
-    `SELECT min(occurred_at) AS first_occurred_at FROM events`
-  );
-  const firstOccurredAt = firstEventResult.rows[0]?.first_occurred_at ?? null;
+  // min(occurred_at), excluding retroactive Marks (milestone-3-spec.md §3 —
+  // occurred_at "may be years ago" for those, by design). Every other event
+  // type's occurred_at is expected to sit close to real time, so this is a
+  // targeted exclusion, not a switch to recorded_at: tenure should mean
+  // "how long has this log been growing," and a 2019 achievement backdated
+  // during onboarding must not make tenure read as seven years.
+  const effectiveEvents = await resolveEffectiveEvents(client);
+  let firstOccurredAt: Date | null = null;
+  for (const event of effectiveEvents) {
+    if (event.type === "mark.recorded" && event.payload.retroactive === true) continue;
+    if (firstOccurredAt === null || event.occurredAt < firstOccurredAt) firstOccurredAt = event.occurredAt;
+  }
+
   const timezone = getTimezone();
   const tenureDays = firstOccurredAt
-    ? daysBetweenInclusive(
-        computeLogicalDay(new Date(firstOccurredAt), timezone),
-        computeLogicalDay(asOf, timezone)
-      )
+    ? daysBetweenInclusive(computeLogicalDay(firstOccurredAt, timezone), computeLogicalDay(asOf, timezone))
     : 0;
 
   return {
-    rank: getCurrentRank(),
+    rank: await getCurrentRank(client),
     domainLevels,
     marksCount,
     tenureDays,
