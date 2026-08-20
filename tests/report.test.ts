@@ -143,4 +143,28 @@ describe("nightly report variants (PRD §12.3, word for word)", () => {
     });
     expect(new Set(closings).size).toBe(7);
   });
+
+  it("an empty day reads shorter than a full day, by content — not necessarily by line count", () => {
+    // milestone-4-spec.md §6 / PRD §12.3's governing rule: "a day with
+    // nothing logged produces a shorter report, not a longer one." Both
+    // variants hit the 5-line cap (confirmed above), including in the
+    // PRD's own worked examples — so "shorter" has to mean less actual
+    // content (characters), not fewer lines. Checked across several day
+    // indices so it isn't a coincidence of one closing-line pick.
+    const fullDay: NightlyReportInput = {
+      ...BASE,
+      weekCommitments: [
+        { id: "1", label: "a" },
+        { id: "2", label: "b" },
+      ],
+      completedTodayIds: ["1", "2"],
+      xpEarnedToday: { body: 50, career: 25 },
+    };
+    for (let i = 0; i < 7; i++) {
+      const day = `2020-04-${String(i + 1).padStart(2, "0")}`;
+      const fullChars = computeNightlyReport({ ...fullDay, logicalDay: day }).join("").length;
+      const emptyChars = computeNightlyReport({ ...BASE, logicalDay: day }).join("").length;
+      expect(emptyChars).toBeLessThan(fullChars);
+    }
+  });
 });

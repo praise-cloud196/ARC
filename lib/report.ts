@@ -60,19 +60,25 @@ export interface NightlyReportInput {
   returnLoggedLine: string | null;
 }
 
+// Every CLOSING_LINES_COMPLETE entry is deliberately longer than every
+// CLOSING_LINES_EMPTY one (checked by a test): the two variants pick from
+// their respective set at the same rotation index, and without that
+// ordering a short complete-day line could pair with a long empty-day one
+// on some day, breaking "a day with nothing logged produces a shorter
+// report, not a longer one" (PRD §12.3's governing rule) for that day.
 const CLOSING_LINES_COMPLETE = [
   "Three of the last five days ran clean.",
-  "The pattern holds.",
-  "Consistent, not dramatic.",
-  "Another full day on the record.",
-  "The log speaks for itself.",
-  "Steady, same as the day before.",
-  "Nothing here needed forcing.",
+  "The pattern continues to hold steady.",
+  "Consistent, not dramatic — which is the point.",
+  "Another full day added to the record.",
+  "The log speaks for itself, plainly enough.",
+  "Steady, the same as the day before it.",
+  "Nothing here needed forcing to happen.",
 ] as const;
 
 const CLOSING_LINES_EMPTY = [
   "Day incomplete. Progress continues.",
-  "Nothing today. The record continues regardless.",
+  "Nothing today. The record holds.",
   "A gap, not a verdict.",
   "The log shows a pause, not a stop.",
   "Tomorrow is unaffected by today.",
