@@ -8,12 +8,12 @@
  * tenure (a distance from a fixed starting point that only grows).
  */
 import type { PoolClient } from "pg";
-import { levelForXp, type Rank } from "./calibration";
+import type { Rank } from "./calibration";
 import { daysBetweenInclusive } from "./day-math";
 import { SCORED_DOMAINS, type ScoredDomain } from "./domains";
 import { computeLogicalDay, getTimezone } from "./logical-day";
 import { getCurrentRank } from "./rank";
-import { computeDomainXp } from "./xp";
+import { computeDomainLevel } from "./xp";
 
 export interface Identity {
   rank: Rank;
@@ -27,8 +27,10 @@ export interface Identity {
 export async function computeIdentity(client: PoolClient, asOf: Date = new Date()): Promise<Identity> {
   const domainLevels = {} as Record<ScoredDomain, number>;
   for (const domain of SCORED_DOMAINS) {
-    const xp = await computeDomainXp(client, domain);
-    domainLevels[domain] = levelForXp(xp);
+    // computeDomainLevel, not levelForXp(computeDomainXp(...)) — the latter
+    // would let a downward correction take away a level (milestone-2.1-fixes.md
+    // item 1, AGENTS.md hard rule 12).
+    domainLevels[domain] = await computeDomainLevel(client, domain);
   }
 
   // Marks are permanent and never revised away by a correction (only their

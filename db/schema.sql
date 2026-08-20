@@ -55,7 +55,17 @@ CREATE TABLE events (
   payload         jsonb NOT NULL DEFAULT '{}'::jsonb,
   idempotency_key text UNIQUE,
   -- A correction event without a subject to correct is meaningless.
-  CHECK (type NOT LIKE '%.corrected' OR subject_id IS NOT NULL)
+  CHECK (type NOT LIKE '%.corrected' OR subject_id IS NOT NULL),
+  -- Validate at write time, never throw at read time
+  -- (milestone-2.1-fixes.md item 2). Tier values (1, 2, 3) must match
+  -- XP_TIER_VALUES in lib/calibration.ts. `payload ? 'tier'` guards against
+  -- a missing key silently passing: `payload->>'tier' IN (...)` alone
+  -- evaluates to NULL (not false) when the key is absent, and a CHECK
+  -- constraint treats NULL as satisfied.
+  CHECK (
+    type NOT IN ('commitment.completed', 'commitment.completed.corrected', 'quest.step_completed')
+    OR (payload ? 'tier' AND payload->>'tier' IN ('1', '2', '3'))
+  )
 );
 
 CREATE INDEX events_logical_day_idx ON events (logical_day);

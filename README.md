@@ -21,6 +21,10 @@ Schema changes live in `db/migrations/*.sql`, applied in order and tracked in `s
 
 The event log (`events`, `attention_events`) is the only irreplaceable data in this product — everything else is derived or can be re-declared. Neon point-in-time restore is the backstop if the migration guard above is ever overridden incorrectly or bypassed.
 
+`npm run backup` (`scripts/backup.ts`) writes a timestamped JSON dump of `events` and `attention_events` to `ARC_BACKUP_DIR`, or `~/arc-backups` by default — deliberately outside the repo/checkout, so a problem with this project directory or disk doesn't take the backup down with it. A hand-rolled logical dump via the existing `pg` dependency, not `pg_dump`: this machine doesn't have the Postgres client tools installed, and the schema itself is already fully reproducible from `db/migrations/*.sql` in git, so only the data needs covering.
+
+Scheduled daily via Windows Task Scheduler — task `ARC Daily Backup`, running `scripts/run-backup.cmd` at 03:00 local time, logging to `~/arc-backups/backup.log`. Inspect or change it with `schtasks /Query /TN "ARC Daily Backup" /V` / Task Scheduler's GUI. This only runs while the machine is on and logged in — it is not a substitute for PITR, only a second, independent copy.
+
 **Confirm before real data exists (before the milestone 3 baseline audit):** that PITR is enabled on this Neon project, and record the actual retention window here.
 
 - Project: `gentle-violet-22128593` (`neon.project_id`), branch `br-restless-salad-ax08xdzq` (`neon.branch_id`) — confirmed by querying `pg_settings` directly against the database. Neither Postgres nor `pg_settings` exposes PITR/restore-window configuration itself — that lives in the Neon control plane, not the compute — and `neonctl` needs an interactive browser login this environment can't complete, so an agent cannot confirm the rest unattended.

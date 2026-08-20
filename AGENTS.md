@@ -33,6 +33,7 @@ Violating any of these is a defect regardless of whether tests pass.
 10. **Stances set to `not_now` are filtered at the query layer** and must not be able to surface anywhere.
 11. **The Attention layer never appears** on the morning screen, in the nightly report, or in any XP or momentum calculation.
 12. **Nothing built is ever taken away.** No mechanic may reduce XP, levels, Marks, or history. Only momentum and condition move downward.
+13. **Validate at write time, never throw at read time.** The event log is append-only and a bad row can't be deleted, only corrected — which requires the app to already be working well enough to write the correction. A read path that renders a screen must not be capable of being poisoned by one malformed event. Enforce shape (e.g. a `payload` field's required presence/values for a given `type`) with a DB-level CHECK before the row can ever be inserted; a throw remaining in a read path afterward is a defensive assertion that should never fire, not real validation (milestone-2.1-fixes.md item 2).
 
 ## Vocabulary
 

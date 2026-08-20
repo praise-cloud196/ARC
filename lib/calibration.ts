@@ -59,7 +59,16 @@ export function xpToReachLevel(level: number): number {
   return total;
 }
 
-/** The level `xp` total XP puts a domain at. Levels never decrease (AGENTS.md hard rule 12), so callers must never feed this a lower xp than previously observed. */
+/**
+ * The level `xp` total XP puts a domain at. This is a pure function of the
+ * number given to it — it does not itself guarantee AGENTS.md hard rule 12
+ * ("levels never decrease"). A correction can legitimately lower a domain's
+ * *current* XP (milestone-2.1-fixes.md item 1), so `levelForXp(currentXp)`
+ * is the wrong way to display a domain's level; `lib/xp.ts`'s
+ * `computeDomainLevel` replays the log to find the high-water mark instead,
+ * calling this at each step. Call this directly only where a possibly-lower
+ * current level is genuinely what's wanted (`computeDomainLevel` itself).
+ */
 export function levelForXp(xp: number): number {
   let level = 1;
   while (xpToReachLevel(level + 1) <= xp) {
