@@ -277,7 +277,12 @@ CREATE TABLE commitments (
   active_from   date NOT NULL,
   active_until  date,
   created_at    timestamptz NOT NULL DEFAULT clock_timestamp(),
-  CHECK (active_until IS NULL OR active_until >= active_from)
+  CHECK (active_until IS NULL OR active_until >= active_from),
+  -- Found via browser testing: a double form submission produced two
+  -- identical rows. Every event write already tolerates a double tap via
+  -- idempotency_key (architecture-and-ux-v1.0.md §2.6); this is the
+  -- equivalent guard for the direction-table row a declaration inserts.
+  UNIQUE (week_start, domain, label)
 );
 
 CREATE INDEX commitments_week_start_idx ON commitments (week_start);
