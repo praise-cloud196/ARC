@@ -165,7 +165,10 @@ export async function appendEvent(client: Queryable, event: NewEvent): Promise<A
  * values rather than to "now" / null: a correction is normally fixing a
  * value in `payload` (a wrong tier, a typo'd note), not relitigating when or
  * under which domain the thing happened. A caller correcting those too may
- * still override them explicitly.
+ * still override them explicitly. `payload` is shallow-merged over the
+ * original's for the same reason — a correction only needs to name the
+ * field it's fixing (`{ tier: 2 }`), not restate the whole object, or every
+ * other field would silently vanish from the effective event.
  */
 export async function appendCorrection(
   client: Queryable,
@@ -175,7 +178,8 @@ export async function appendCorrection(
     occurred_at: Date;
     domain: string | null;
     timezone: string;
-  }>(`SELECT occurred_at, domain, timezone FROM events WHERE id = $1 AND type = $2`, [
+    payload: Record<string, unknown>;
+  }>(`SELECT occurred_at, domain, timezone, payload FROM events WHERE id = $1 AND type = $2`, [
     correction.correctsEventId,
     correction.correctsType,
   ]);
@@ -191,7 +195,7 @@ export async function appendCorrection(
     occurredAt: correction.occurredAt ?? originalRow.occurred_at,
     domain: correction.domain !== undefined ? correction.domain : originalRow.domain,
     subjectId: correction.correctsEventId,
-    payload: correction.payload,
+    payload: { ...originalRow.payload, ...correction.payload },
     idempotencyKey: correction.idempotencyKey,
     timezone: correction.timezone ?? originalRow.timezone,
   });

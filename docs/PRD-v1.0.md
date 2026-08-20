@@ -109,19 +109,19 @@ All numeric values below are **calibration constants**, provisional until four w
 
 **Resistance tag.** One tap on completion: *easy / normal / against resistance*. Recorded; does not modify XP.
 
-**Domain levels.** Per-domain, no global level. Cost to reach level *n* = 100 + 50(n−1), cumulative. Levels never decrease.
+**Domain levels.** Per-domain, no global level. Levels never decrease. Cost *of* level *n* = 100 + 50(n−1) — the marginal cost of that one level, not cumulative. Cumulative XP to *reach* level *n* is the running sum of that: `xpToReachLevel(n) = Σ levelCost(k)` for k = 1..n−1 (level 2 at 100, level 5 at 700, level 10 at 2,700). This table originally documented the marginal figure as if it were cumulative, which would have put level 10 at 550 XP — reachable in about a week; `docs/milestone-2-spec.md` §2 corrects it. Where this section and that document differ, the spec document wins.
 
-**Dormancy.** A domain with no activity for 21 days enters a dormant display state. No penalty, no loss.
+**Dormancy.** A domain with no conduct for 21 days enters a dormant display state. No penalty, no loss. Distinct from momentum's Dormant state below (7 days, whole-character) — the two windows are not the same thing (`docs/milestone-2-spec.md` §5).
 
-**Momentum.** Completion rate of declared commitments over trailing 14 days, compared to the prior 14. Displayed as a state, never a percentage.
+**Momentum.** Completion rate of declared commitments over trailing 14 days, compared to the prior 14. Displayed as a state, never a percentage. The table below is under-determined as written — "Building" and "Strong" overlap, and it doesn't say what happens with no prior period or no commitments at all. `docs/milestone-2-spec.md` §3 resolves it into an exact, ordered state machine; that document is authoritative and this table is kept here only as the informal summary:
 
-| State | Condition |
-|---|---|
-| Building | Rate improving vs prior period |
-| Strong | ≥80%, stable or improving |
-| Holding | 50–80%, stable |
-| Slipping | Declining vs prior period |
-| Dormant | No activity for 7+ days |
+| Order | State | Condition |
+|---|---|---|
+| 1 | Dormant | No conduct for 7+ days (never Attention-layer activity, never `app.opened`) |
+| 2 | Strong | Current rate ≥80% — checked *before* Slipping, so a small dip off a strong period still reads as Strong |
+| 3 | Building | Rate improving beyond a small stable band vs. the prior period |
+| 4 | Slipping | Rate declining beyond that band vs. the prior period |
+| 5 | Holding | Everything else, including "no commitments exist" (never Slipping) and "no prior period yet" |
 
 **Condition.** One tap for sleep and energy. Feeds the nightly report and future pattern detection. Never scored, never labelled good or bad.
 

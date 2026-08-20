@@ -129,16 +129,22 @@ export async function appendAttentionEvent(
  * `occurredAt` and `timezone` default to the original event's own values
  * rather than to "now": a correction is normally fixing a value in
  * `payload`, not relitigating when the thing happened. A caller correcting
- * that too may still override it explicitly.
+ * that too may still override it explicitly. `payload` is shallow-merged
+ * over the original's, so a correction only needs to name the field it's
+ * fixing rather than restate the whole object.
  */
 export async function appendAttentionCorrection(
   client: Queryable,
   correction: NewAttentionCorrection
 ): Promise<AppendedAttentionEvent> {
-  const original = await client.query<{ occurred_at: Date; timezone: string }>(
-    `SELECT occurred_at, timezone FROM attention_events WHERE id = $1 AND type = $2`,
-    [correction.correctsEventId, correction.correctsType]
-  );
+  const original = await client.query<{
+    occurred_at: Date;
+    timezone: string;
+    payload: Record<string, unknown>;
+  }>(`SELECT occurred_at, timezone, payload FROM attention_events WHERE id = $1 AND type = $2`, [
+    correction.correctsEventId,
+    correction.correctsType,
+  ]);
   const originalRow = original.rows[0];
   if (!originalRow) {
     throw new Error(
@@ -150,7 +156,7 @@ export async function appendAttentionCorrection(
     type: `${correction.correctsType}.corrected` as AttentionEventType,
     occurredAt: correction.occurredAt ?? originalRow.occurred_at,
     subjectId: correction.correctsEventId,
-    payload: correction.payload,
+    payload: { ...originalRow.payload, ...correction.payload },
     idempotencyKey: correction.idempotencyKey,
     timezone: correction.timezone ?? originalRow.timezone,
   });

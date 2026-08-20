@@ -33,14 +33,39 @@ export const XP_TIER_VALUES = {
 
 export type XpTier = keyof typeof XP_TIER_VALUES;
 
-// --- Domain levels (PRD-v1.0.md §10) — PROVISIONAL -------------------------
+// --- Domain levels (PRD-v1.0.md §10, milestone-2-spec.md §2) — PROVISIONAL -
 
 export const LEVEL_COST_BASE = 100;
 export const LEVEL_COST_INCREMENT = 50;
 
-/** Cumulative XP required to reach `level` in a domain. */
-export function levelCost(level: number): number {
+/**
+ * The XP cost *of* `level` — i.e. how much XP it takes to advance from
+ * `level - 1` to `level`. Not cumulative: milestone-2-spec.md §2 flagged the
+ * previous name/doc here (`levelCost`, documented as "cumulative XP
+ * required to reach level n") as ambiguous and probably wrong — it would
+ * have put level 10 at 550 XP, reachable in about a week. Use
+ * `xpToReachLevel` for the cumulative figure.
+ */
+export function xpCostOfLevel(level: number): number {
   return LEVEL_COST_BASE + LEVEL_COST_INCREMENT * (level - 1);
+}
+
+/** Cumulative XP required to reach `level` (i.e. to have just completed level - 1). Level 1 requires 0. */
+export function xpToReachLevel(level: number): number {
+  let total = 0;
+  for (let l = 1; l < level; l++) {
+    total += xpCostOfLevel(l);
+  }
+  return total;
+}
+
+/** The level `xp` total XP puts a domain at. Levels never decrease (AGENTS.md hard rule 12), so callers must never feed this a lower xp than previously observed. */
+export function levelForXp(xp: number): number {
+  let level = 1;
+  while (xpToReachLevel(level + 1) <= xp) {
+    level++;
+  }
+  return level;
 }
 
 // --- Dormancy (philosophy-and-mechanics-v0.2.md §6) -------------------------
@@ -48,14 +73,25 @@ export function levelCost(level: number): number {
 /** Days without domain activity before it enters the dormant display state. */
 export const DOMAIN_DORMANCY_DAYS = 21;
 
-// --- Momentum (PRD-v1.0.md §10) — thresholds PROVISIONAL -------------------
+// --- Momentum (PRD-v1.0.md §10, milestone-2-spec.md §3) — PROVISIONAL ------
 
 export const MOMENTUM_WINDOW_DAYS = 14;
-export const MOMENTUM_STRONG_COMPLETION_RATE = 0.8; // >= this and stable/improving -> Strong
-export const MOMENTUM_HOLDING_COMPLETION_RATE = 0.5; // 0.5-0.8 and stable -> Holding
-export const MOMENTUM_DORMANT_INACTIVITY_DAYS = 7; // no activity for this long -> Dormant
+export const MOMENTUM_STRONG_COMPLETION_RATE = 0.8; // >= this -> Strong (checked before Slipping — see lib/momentum.ts)
+export const MOMENTUM_DORMANT_INACTIVITY_DAYS = 7; // no conduct for this long -> Dormant
+/** delta magnitude within this band counts as stable (-> Holding), not Building/Slipping. */
+export const MOMENTUM_STABLE_BAND = 0.05;
 
 // --- Rank (PRD-v1.0.md §10) — tenure minimum PROVISIONAL -------------------
+
+export const RANKS = ["E", "D", "C", "B", "A", "S"] as const;
+export type Rank = (typeof RANKS)[number];
+
+/**
+ * Rank before the baseline audit (milestone 3) has run and written a real
+ * starting rank. milestone-2-spec.md §6: "Starting rank comes from the
+ * baseline audit; until then, read it from config" — this is that config.
+ */
+export const DEFAULT_STARTING_RANK: Rank = "E";
 
 export const RANK_MIN_TENURE_SEASONS = 1;
 export const RANK_MIN_NEW_MARK_DOMAINS = 2;
