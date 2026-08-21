@@ -1,0 +1,9 @@
+# core.autocrlf=true (the norm on Windows) converts LF -> CRLF on checkout
+# for every text file. When a tool other than git rewrites one of those
+# files with LF endings — npm on Windows writes package-lock.json with
+# plain \n, not \r\n — the mismatch against the CRLF working tree can
+# surface as a full-file diff with equal insertion/deletion counts: every
+# line "changed" purely by line-ending, nothing else. Normalizing every
+# text file to LF in the repo removes the ambiguity autocrlf otherwise
+# leaves, regardless of what wrote the file or what OS checked it out.
+* text=auto eol=lf

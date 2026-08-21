@@ -12,7 +12,13 @@ import { submitDeclareCommitment } from "./actions";
  * week: the full Ritual (declaring next week's commitments as part of a
  * weekly review) is milestone 7 — this is the minimal path that makes the
  * Loop usable now.
+ *
+ * `dynamic = "force-dynamic"`: reads live DB state and the current day on
+ * every load — see app/page.tsx's comment on the same line for why a raw
+ * `pg` query doesn't trip Next's static/dynamic analysis on its own.
  */
+export const dynamic = "force-dynamic";
+
 export default async function CommitmentsPage() {
   const weekStart = startOfWeek(computeLogicalDay(new Date(), getTimezone()));
   const existing = await withReadTransaction((client) => getCommitmentsForWeek(client, weekStart));

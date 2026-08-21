@@ -18,6 +18,12 @@ import {
   submitStance,
 } from "./actions";
 
+// Reads live DB state on every load (resumeStep, each step's progress
+// query) — already implicitly dynamic via searchParams, but explicit so it
+// doesn't silently regress if that read is ever refactored away. See
+// app/page.tsx's comment for the general reason.
+export const dynamic = "force-dynamic";
+
 type Step = "domains" | "marks" | "metrics" | "stances" | "outcomes" | "season" | "rank";
 
 const STEP_ORDER: Step[] = ["domains", "marks", "metrics", "stances", "outcomes", "season", "rank"];

@@ -10,6 +10,13 @@ import { DayScreen } from "@/app/components/DayScreen";
 import { NightScreen } from "@/app/components/NightScreen";
 import type { CommitmentRowData } from "@/app/components/CommitmentRow";
 
+// This page reads live DB state (audit status, commitments, momentum) and
+// the current server time on every load — Next.js's static analysis can't
+// see that through a raw `pg` query (it isn't a recognized dynamic API the
+// way `fetch()` or `cookies()` are), so without this it gets prerendered
+// once at build time and every visitor gets that frozen snapshot forever.
+export const dynamic = "force-dynamic";
+
 export default async function TodayPage() {
   const auditCompleted = await withReadTransaction(async (client) => {
     const result = await client.query(`SELECT 1 FROM events WHERE type = 'audit.completed' LIMIT 1`);

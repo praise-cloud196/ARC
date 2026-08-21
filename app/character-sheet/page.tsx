@@ -4,6 +4,11 @@ import { listOutcomes } from "@/lib/quests";
 import { SCORED_DOMAINS } from "@/lib/domains";
 import { SystemVoice } from "@/app/components/SystemVoice";
 
+// Reads live DB state on every load — see app/page.tsx's comment on this
+// same line for why it has to be forced (a raw `pg` query doesn't trip
+// Next's static/dynamic analysis on its own).
+export const dynamic = "force-dynamic";
+
 export default async function CharacterSheetPage() {
   const { identity, outcomes } = await withReadTransaction(async (client) => ({
     identity: await computeIdentity(client),
