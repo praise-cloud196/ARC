@@ -9,6 +9,7 @@
     "migrate": "tsx scripts/migrate.ts",
     "rebuild": "tsx scripts/rebuild.ts",
     "backup": "tsx scripts/backup.ts",
+    "backup:production": "tsx scripts/backup-production.ts",
     "restore": "tsx scripts/restore.ts",
     "boundary-job": "tsx scripts/boundary-job.ts",
     "test": "vitest run"

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { withReadTransaction } from "@/lib/with-transaction";
-import { selectLoopState, computeMorningScreenData, computeTonightsReport } from "@/lib/loop";
+import { withReadTransaction, withTransaction } from "@/lib/with-transaction";
+import { determineLoopState, recordAppOpened, computeMorningScreenData, computeTonightsReport } from "@/lib/loop";
 import { getCommitmentsForWeek } from "@/lib/commitments";
 import { startOfWeek } from "@/lib/day-math";
 import { computeLogicalDay, getTimezone } from "@/lib/logical-day";
@@ -18,7 +18,13 @@ export default async function TodayPage() {
   if (!auditCompleted) redirect("/audit");
 
   const now = new Date();
-  const state = selectLoopState(now);
+  // Determine state before recording this visit — recording first would
+  // make every visit see itself as "already engaged" (milestone-4.1-fixes.md
+  // §4). The record itself is a real write (idempotency-keyed per logical
+  // day, so a second visit today is a no-op), never rolled back like the
+  // read-only data fetches below.
+  const state = await withReadTransaction((client) => determineLoopState(client, now));
+  await withTransaction((client) => recordAppOpened(client, now));
 
   if (state === "morning") {
     const data = await withReadTransaction((client) => computeMorningScreenData(client, now));

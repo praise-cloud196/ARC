@@ -21,6 +21,7 @@ import { mkdirSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { getPool } from "../lib/db";
+import { assertNotProduction } from "../lib/db-guard";
 import { encryptBackup } from "./backup-crypto";
 
 // `||`, not `??`: an empty string (e.g. a blank ARC_BACKUP_DIR= left over
@@ -35,6 +36,7 @@ async function main(): Promise<void> {
   }
 
   const pool = getPool();
+  await assertNotProduction(pool, "npm run backup");
 
   const [events, attentionEvents] = await Promise.all([
     pool.query("SELECT * FROM events ORDER BY recorded_at ASC"),

@@ -1,23 +1,30 @@
 /**
- * Today (the Loop) — milestone-4-spec.md §5. One route, three states
- * selected by clock time relative to the logical day boundary and the
- * user's display-hour preference; and the data each state needs to render.
+ * Today (the Loop) — milestone-4-spec.md §5, corrected by
+ * docs/milestone-4.1-fixes.md §4. One route, three states; and the data
+ * each state needs to render.
  */
 import type { PoolClient } from "pg";
-import { LOGICAL_DAY_BOUNDARY_HOUR, MORNING_WINDOW_HOURS } from "./calibration";
+import {
+  LOGICAL_DAY_BOUNDARY_HOUR,
+  REPORT_CLOSING_LINE_COOLDOWN_DAYS,
+  REPORT_STREAK_LOOKBACK_DAYS,
+  XP_TIER_VALUES,
+  type XpTier,
+} from "./calibration";
+import { appendEvent } from "./events";
 import { computeLogicalDay, getDisplayHour, getTimezone } from "./logical-day";
-import { daysBetweenInclusive } from "./day-math";
+import { addDays, daysBetweenInclusive, startOfWeek } from "./day-math";
 import { computeIdentity, type Identity } from "./identity";
 import { computeCurrentMomentum, getCommitmentsForWeek, type Commitment } from "./commitments";
-import { startOfWeek } from "./day-math";
 import type { MomentumResult } from "./momentum";
+import { selectClosingLine, type FactCommitment, type FactCompletion } from "./report-facts";
 import {
   computeNightlyReport,
   type NightlyReportInput,
   type ReportCommitment,
   type ReportMark,
 } from "./report";
-import { XP_TIER_VALUES, type XpTier } from "./calibration";
+import type { Domain } from "./domains";
 
 export type LoopState = "morning" | "day" | "night";
 
@@ -31,15 +38,64 @@ function localHour(date: Date, timezone: string): number {
   return hour === 24 ? 0 : hour;
 }
 
-/** Pure given `now`'s local hour. */
-export function selectLoopState(now: Date, timezone: string = getTimezone(), displayHour: number = getDisplayHour()): LoopState {
+/**
+ * Pure. Night is still purely clock-driven (before the boundary = still
+ * last night; at/after the display hour = tonight — milestone-4.1-fixes.md
+ * §5: "as already built"). Between those two clock bounds, Morning is not
+ * a fixed window (§4: waking at 11:00 under the old 3-hour-from-boundary
+ * design meant never seeing Morning at all, the one screen carrying the
+ * product's emotional weight) — it's whichever of Morning/Day
+ * `alreadyEngagedToday` (already open once today, or already completed
+ * something) says it should be. That flag itself is log-derived
+ * (`determineLoopState` below), not a second clock rule.
+ */
+export function selectLoopState(
+  now: Date,
+  alreadyEngagedToday: boolean,
+  timezone: string = getTimezone(),
+  displayHour: number = getDisplayHour()
+): LoopState {
   const hour = localHour(now, timezone);
-  const morningEnd = (LOGICAL_DAY_BOUNDARY_HOUR + MORNING_WINDOW_HOURS) % 24;
-
   if (hour < LOGICAL_DAY_BOUNDARY_HOUR) return "night"; // still last night, before today's boundary
-  if (hour < morningEnd) return "morning";
-  if (hour < displayHour) return "day";
-  return "night";
+  if (hour >= displayHour) return "night";
+  return alreadyEngagedToday ? "day" : "morning";
+}
+
+/** Has today's logical day already seen an app open or a completion — milestone-4.1-fixes.md §4's "first open" / "until the first completion" conditions, both derived from the log rather than stored session state. */
+async function hasEngagedToday(client: PoolClient, today: string): Promise<boolean> {
+  const result = await client.query(
+    `SELECT 1 FROM events WHERE logical_day = $1 AND type IN ('app.opened', 'commitment.completed') LIMIT 1`,
+    [today]
+  );
+  return result.rows.length > 0;
+}
+
+/**
+ * Records this visit (self-instrumentation, PRD §22 — never read by XP,
+ * momentum, or the nightly report). Idempotency-keyed per logical day, not
+ * per visit: what `hasEngagedToday` needs is "did today see an open at
+ * all," so a second call the same day is a deliberate no-op, not a second
+ * fact worth recording. Call this *after* `determineLoopState` — recording
+ * the current visit before checking would make every visit see itself as
+ * "already engaged."
+ */
+export async function recordAppOpened(client: PoolClient, now: Date = new Date()): Promise<void> {
+  const timezone = getTimezone();
+  const today = computeLogicalDay(now, timezone);
+  await appendEvent(client, {
+    type: "app.opened",
+    occurredAt: now,
+    timezone,
+    idempotencyKey: `app-opened:${today}`,
+  });
+}
+
+/** DB-wiring for `selectLoopState` — fetches `alreadyEngagedToday` and calls the pure function. */
+export async function determineLoopState(client: PoolClient, now: Date = new Date()): Promise<LoopState> {
+  const timezone = getTimezone();
+  const today = computeLogicalDay(now, timezone);
+  const alreadyEngaged = await hasEngagedToday(client, today);
+  return selectLoopState(now, alreadyEngaged, timezone);
 }
 
 interface CurrentSeasonRow {
@@ -140,19 +196,55 @@ export async function computeNightlyReportData(client: PoolClient, now: Date = n
   }
 
   const momentum = await computeCurrentMomentum(client, today);
+  const closingLine = await computeClosingLine(client, today);
 
   return {
     dayNumber,
     seasonNumber: season?.number ?? 1,
-    logicalDay: today,
     weekCommitments: reportCommitments,
     completedTodayIds: [...completedTodayIds],
     xpEarnedToday,
     momentum,
+    closingLine,
     mark,
     returnAfterGapDays: null,
     returnLoggedLine: null,
   };
+}
+
+/**
+ * lib/report-facts.ts's `selectClosingLine` needs enough history to
+ * evaluate each fact rule both tonight and on every day in its cooldown
+ * window (and `streakRecordRule` itself looks back further still), so this
+ * fetches REPORT_STREAK_LOOKBACK_DAYS + REPORT_CLOSING_LINE_COOLDOWN_DAYS
+ * of commitments/completions — comfortably covering the deepest lookback
+ * any rule, evaluated on any cooldown day, could need.
+ */
+async function computeClosingLine(client: PoolClient, asOfDay: string): Promise<string | null> {
+  const horizon = addDays(asOfDay, -(REPORT_STREAK_LOOKBACK_DAYS + REPORT_CLOSING_LINE_COOLDOWN_DAYS));
+
+  const commitmentsResult = await client.query<{ id: string; active_from: string; active_until: string | null }>(
+    `SELECT id, active_from, active_until FROM commitments WHERE active_from <= $1 AND (active_until IS NULL OR active_until >= $2)`,
+    [asOfDay, horizon]
+  );
+  const commitments: FactCommitment[] = commitmentsResult.rows.map((row) => ({
+    id: row.id,
+    activeFrom: row.active_from,
+    activeUntil: row.active_until,
+  }));
+
+  const completionsResult = await client.query<{ commitment_id: string; domain: Domain; logical_day: string }>(
+    `SELECT subject_id AS commitment_id, domain, logical_day FROM events
+     WHERE type = 'commitment.completed' AND logical_day >= $1 AND logical_day <= $2`,
+    [horizon, asOfDay]
+  );
+  const completions: FactCompletion[] = completionsResult.rows.map((row) => ({
+    commitmentId: row.commitment_id,
+    domain: row.domain,
+    logicalDay: row.logical_day,
+  }));
+
+  return selectClosingLine({ commitments, completions, asOfDay });
 }
 
 /** Renders tonight's report. */

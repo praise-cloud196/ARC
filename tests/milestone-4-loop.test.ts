@@ -17,7 +17,7 @@ import {
   patchCommitmentCompletion,
 } from "../lib/commitments";
 import { runBoundaryJob } from "../lib/boundary-job";
-import { selectLoopState } from "../lib/loop";
+import { determineLoopState, recordAppOpened, selectLoopState } from "../lib/loop";
 import { startOfWeek } from "../lib/day-math";
 
 const hasDb = Boolean(process.env.DATABASE_URL);
@@ -293,14 +293,90 @@ describe.skipIf(!hasDb)("Boundary job (milestone-4-spec.md §6)", () => {
   }, 45000);
 });
 
-describe("Today's state selection (milestone-4-spec.md §5)", () => {
-  it("selects morning, day, and night by clock hour relative to the boundary and display hour", () => {
+describe("Today's state selection (milestone-4-spec.md §5, corrected by milestone-4.1-fixes.md §4)", () => {
+  it("Night is still purely clock-driven: before the boundary and at/after the display hour", () => {
     const tz = "UTC";
     const displayHour = 20;
-    expect(selectLoopState(new Date("2026-01-01T05:00:00Z"), tz, displayHour)).toBe("night"); // before boundary
-    expect(selectLoopState(new Date("2026-01-01T06:30:00Z"), tz, displayHour)).toBe("morning");
-    expect(selectLoopState(new Date("2026-01-01T12:00:00Z"), tz, displayHour)).toBe("day");
-    expect(selectLoopState(new Date("2026-01-01T21:00:00Z"), tz, displayHour)).toBe("night");
+    expect(selectLoopState(new Date("2026-01-01T05:00:00Z"), false, tz, displayHour)).toBe("night"); // before boundary
+    expect(selectLoopState(new Date("2026-01-01T21:00:00Z"), false, tz, displayHour)).toBe("night");
+    // Whether engaged today or not, Night wins outside the boundary/display-hour window.
+    expect(selectLoopState(new Date("2026-01-01T05:00:00Z"), true, tz, displayHour)).toBe("night");
+    expect(selectLoopState(new Date("2026-01-01T21:00:00Z"), true, tz, displayHour)).toBe("night");
+  });
+
+  it("Morning only on the first open of the day; Day otherwise — not a fixed clock window", () => {
+    const tz = "UTC";
+    const displayHour = 20;
+    // milestone-4.1-fixes.md §4's own example: waking at 11:00 must still
+    // show Morning if this is the day's first open — the old 3-hour-from-
+    // boundary design would have already switched to Day by then.
+    expect(selectLoopState(new Date("2026-01-01T11:00:00Z"), false, tz, displayHour)).toBe("morning");
+    expect(selectLoopState(new Date("2026-01-01T06:01:00Z"), false, tz, displayHour)).toBe("morning");
+    expect(selectLoopState(new Date("2026-01-01T19:59:00Z"), false, tz, displayHour)).toBe("morning");
+    // Already engaged (a prior open, or a completion) -> Day, at any hour in the window.
+    expect(selectLoopState(new Date("2026-01-01T06:01:00Z"), true, tz, displayHour)).toBe("day");
+    expect(selectLoopState(new Date("2026-01-01T11:00:00Z"), true, tz, displayHour)).toBe("day");
+  });
+});
+
+describe.skipIf(!hasDb)("First-open detection is log-derived (milestone-4.1-fixes.md §4)", () => {
+  it("the first Today load of a logical day is Morning; a second load the same day is Day", async () => {
+    const pool = getPool();
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const now = new Date("2026-05-01T08:00:00-05:00"); // within the boundary/display-hour window
+
+      expect(await determineLoopState(client, now)).toBe("morning");
+      await recordAppOpened(client, now);
+      expect(await determineLoopState(client, now)).toBe("day");
+
+      // Idempotent: recording the same day's open again changes nothing.
+      await recordAppOpened(client, now);
+      expect(await determineLoopState(client, now)).toBe("day");
+    } finally {
+      await client.query("ROLLBACK").catch(() => {});
+      client.release();
+    }
+  });
+
+  it("a completion alone (no recorded app.opened) also counts as engaged", async () => {
+    const pool = getPool();
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const now = new Date("2026-05-01T08:00:00-05:00");
+      const commitment = await declareCommitment(client, {
+        domain: "body",
+        label: "Train",
+        tier: 1,
+        weeklyTarget: 1,
+        weekStart: startOfWeek("2026-05-01"),
+      });
+      await completeCommitment(client, { commitmentId: commitment.id, occurredAt: now });
+
+      expect(await determineLoopState(client, now)).toBe("day");
+    } finally {
+      await client.query("ROLLBACK").catch(() => {});
+      client.release();
+    }
+  });
+
+  it("engagement doesn't carry over to the next logical day", async () => {
+    const pool = getPool();
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const day1 = new Date("2026-05-01T08:00:00-05:00");
+      const day2 = new Date("2026-05-02T08:00:00-05:00");
+
+      await recordAppOpened(client, day1);
+      expect(await determineLoopState(client, day1)).toBe("day");
+      expect(await determineLoopState(client, day2)).toBe("morning");
+    } finally {
+      await client.query("ROLLBACK").catch(() => {});
+      client.release();
+    }
   });
 });
 

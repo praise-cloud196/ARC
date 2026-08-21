@@ -23,16 +23,6 @@
  */
 export const LOGICAL_DAY_BOUNDARY_HOUR = 6;
 
-/**
- * How long the Today surface stays in its Morning state after the logical
- * day boundary before switching to Day (milestone-4-spec.md §5). PRD §12.1
- * describes Morning as a quick, read-only glance but doesn't give a clock
- * duration for it — this is a provisional interpretation, not a spec'd
- * value, flagged for review the same way milestone-2-spec.md §2's original
- * XP curve was.
- */
-export const MORNING_WINDOW_HOURS = 3;
-
 // --- XP (PRD-v1.0.md §10) — PROVISIONAL ------------------------------------
 
 export const XP_TIER_VALUES = {
@@ -131,6 +121,32 @@ export const AUDIT_RANK_C_MIN_MARKS = 6;
 /** retroDomains >= this and retroMarks >= AUDIT_RANK_D_MIN_MARKS -> proposed rank D. Otherwise E. */
 export const AUDIT_RANK_D_MIN_DOMAINS = 2;
 export const AUDIT_RANK_D_MIN_MARKS = 3;
+
+// --- Nightly report (PRD-v1.0.md §12.3, milestone-4.1-fixes.md §3) — PROVISIONAL
+
+/**
+ * The closing framing line is generated from fact rules over the log, not
+ * picked from a pool of stock phrases (milestone-4.1-fixes.md §3 — a
+ * rotating pool of generic lines is "the product speaking without knowing
+ * anything," the opposite of its only real power). Silence is correct and
+ * expected when no rule's condition holds.
+ */
+
+/** Rule: "N of the last M days ran clean" — M is this window. */
+export const REPORT_CLEAN_STREAK_WINDOW_DAYS = 5;
+/** Fires only once at least this many of the window's days were clean. */
+export const REPORT_CLEAN_STREAK_MIN = 3;
+
+/** Rule: "First {domain} completion in N days" — fires once the gap since that domain's last completion reaches this many days. */
+export const REPORT_DOMAIN_QUIET_THRESHOLD_DAYS = 10;
+
+/** Rule: "Longest run of complete days so far: N" — how far back "so far" looks, bounding the computation. */
+export const REPORT_STREAK_LOOKBACK_DAYS = 90;
+/** The new-record streak must be at least this long to be worth stating. */
+export const REPORT_STREAK_RECORD_MIN = 2;
+
+/** No individual fact rule may supply the closing line twice within this many days (PRD §12.3 — "may not repeat within 7 days"; milestone-4.1-fixes.md §3 clarifies this applies to which *rule* fired, not the exact wording). */
+export const REPORT_CLOSING_LINE_COOLDOWN_DAYS = 7;
 
 // --- Seasons (PRD-v1.0.md §15) — length band PROVISIONAL -------------------
 

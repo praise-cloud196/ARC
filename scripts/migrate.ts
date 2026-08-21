@@ -17,6 +17,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import type { Pool } from "pg";
 import { getPool } from "../lib/db";
+import { assertNotProduction } from "../lib/db-guard";
 
 const MIGRATIONS_DIR = path.join(process.cwd(), "db", "migrations");
 const GUARDED_TABLES = ["events", "attention_events"] as const;
@@ -75,6 +76,12 @@ async function assertSafeToMigrate(pool: Pool): Promise<void> {
 
 async function main(): Promise<void> {
   const pool = getPool();
+  // Separate from assertSafeToMigrate below: this guards by *identity*
+  // (is this the production branch at all) rather than by *data presence*,
+  // so it also protects the window before the real audit has run, while
+  // `main` is still empty and the data-presence check wouldn't catch
+  // anything yet (docs/milestone-4.1-fixes.md §1).
+  await assertNotProduction(pool, "npm run migrate");
   await ensureMigrationsTable(pool);
 
   // Guarded before checking what's pending, not after: "refuse and exit

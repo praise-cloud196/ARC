@@ -14,6 +14,7 @@
  */
 import { readFileSync } from "node:fs";
 import { Pool } from "pg";
+import { assertNotProduction } from "../lib/db-guard";
 import { decryptBackup } from "./backup-crypto";
 
 interface DumpRow {
@@ -73,6 +74,10 @@ async function main(): Promise<void> {
   const dump: Dump = JSON.parse(decryptBackup(readFileSync(filePath), passphrase));
 
   const pool = new Pool({ connectionString: targetUrl });
+  // Guards RESTORE_DATABASE_URL, not DATABASE_URL — restoring old data over
+  // live production would silently reintroduce stale or deleted state,
+  // which is exactly as unsafe as a normal write (docs/milestone-4.1-fixes.md §1).
+  await assertNotProduction(pool, "npm run restore");
   try {
     await insertRows(pool, "events", dump.events, EVENT_COLUMNS);
     await insertRows(pool, "attention_events", dump.attentionEvents, ATTENTION_EVENT_COLUMNS);

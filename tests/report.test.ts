@@ -1,24 +1,28 @@
 /**
- * docs/milestone-4-spec.md §6 / PRD §12.3 — the five report variants,
- * checked word for word against the PRD's own worked examples. Pure
- * function, no database. "2020-01-06" is lib/day-math.ts's dayIndex epoch
- * (index 0), so it deterministically picks index 0 of each closing-line
- * set — the PRD's own line, in both cases.
+ * docs/milestone-4-spec.md §6 / PRD §12.3, corrected by
+ * docs/milestone-4.1-fixes.md §2/§3/§5. Pure function, no database —
+ * `closingLine` is supplied directly here (lib/report-facts.ts, which
+ * actually derives it from the log, has its own test file). The five
+ * variants are still checked word for word against the PRD's own worked
+ * examples, using the PRD's own closing-line text as the supplied value.
  */
 import { describe, expect, it } from "vitest";
 import { computeNightlyReport, type NightlyReportInput } from "../lib/report";
 import type { MomentumResult } from "../lib/momentum";
 
+// delta: 0 sits inside MOMENTUM_STABLE_BAND (0.05), so the qualifier this
+// produces is "unchanged" wherever one is shown at all
+// (milestone-4.1-fixes.md §5).
 const STRONG: MomentumResult = { state: "Strong", rateCurrent: 0.9, ratePrior: 0.9, delta: 0 };
 
 const BASE: NightlyReportInput = {
   dayNumber: 34,
   seasonNumber: 1,
-  logicalDay: "2020-01-06",
   weekCommitments: [],
   completedTodayIds: [],
   xpEarnedToday: {},
   momentum: STRONG,
+  closingLine: null,
   mark: null,
   returnAfterGapDays: null,
   returnLoggedLine: null,
@@ -37,6 +41,7 @@ describe("nightly report variants (PRD §12.3, word for word)", () => {
       ],
       completedTodayIds: ["1", "2", "3", "4"],
       xpEarnedToday: { body: 50, career: 25 },
+      closingLine: "Three of the last five days ran clean.",
     };
     expect(computeNightlyReport(input)).toEqual([
       "DAY 34 · SEASON 1",
@@ -71,17 +76,27 @@ describe("nightly report variants (PRD §12.3, word for word)", () => {
   });
 
   it("empty day", () => {
-    const input: NightlyReportInput = { ...BASE, dayNumber: 36 };
+    // milestone-4.1-fixes.md §5 replaces the old hardcoded "— holding"
+    // qualifier with the same delta-derived one partial uses — "— holding"
+    // is no longer produced anywhere.
+    const input: NightlyReportInput = { ...BASE, dayNumber: 36, closingLine: "Day incomplete. Progress continues." };
     expect(computeNightlyReport(input)).toEqual([
       "DAY 36 · SEASON 1",
       "Nothing logged.",
-      "Momentum: Strong — holding",
-      "",
+      "Momentum: Strong — unchanged",
       "Day incomplete. Progress continues.",
     ]);
   });
 
-  it("day containing a Mark — the Mark is the last line", () => {
+  it("empty day with no closing line: three lines, no trailing blank", () => {
+    // milestone-4.1-fixes.md §3: silence is correct and common. §2: the
+    // blank spacer line was only ever in service of the old rotating-pool
+    // copy — dropped along with it.
+    const input: NightlyReportInput = { ...BASE, dayNumber: 36, closingLine: null };
+    expect(computeNightlyReport(input)).toEqual(["DAY 36 · SEASON 1", "Nothing logged.", "Momentum: Strong — unchanged"]);
+  });
+
+  it("day containing a Mark — the Mark is the last line, no qualifier, no closing line", () => {
     const input: NightlyReportInput = {
       ...BASE,
       dayNumber: 41,
@@ -93,6 +108,7 @@ describe("nightly report variants (PRD §12.3, word for word)", () => {
       ],
       completedTodayIds: ["1", "2", "3", "4"],
       xpEarnedToday: { body: 50, career: 25 },
+      closingLine: "This should never appear — Mark leaves no room.",
       mark: { note: "10 pull-ups, clean. Recorded." },
     };
     expect(computeNightlyReport(input)).toEqual([
@@ -130,41 +146,57 @@ describe("nightly report variants (PRD §12.3, word for word)", () => {
     };
     expect(computeNightlyReport(input).length).toBeLessThanOrEqual(5);
   });
+});
 
-  it("closing line never repeats within any 7 consecutive days (empty-day variant)", () => {
-    // Empty-day inputs for 7 consecutive logical days; the closing line is
-    // always the last of its 5 lines. All 7 must be distinct, proving the
-    // day-index rotation over a 7-entry set can't repeat inside a 7-day
-    // window.
-    const closings = Array.from({ length: 7 }, (_, i) => {
-      const input: NightlyReportInput = { ...BASE, logicalDay: `2020-03-${String(i + 1).padStart(2, "0")}` };
-      const lines = computeNightlyReport(input);
-      return lines[lines.length - 1];
+describe("report length guarantee, measured in lines (milestone-4.1-fixes.md §2)", () => {
+  it("an empty day has exactly one fewer line than a complete day, for the same data and closing-line presence", () => {
+    // "An empty day is four lines; a complete day is five. That is the
+    // whole rule" — structural (no XP line on an empty day, ever), not
+    // contingent on which closing line's text happens to be picked.
+    const shared = { ...BASE, weekCommitments: [{ id: "1", label: "a" }] };
+
+    const completeWithClosing = computeNightlyReport({
+      ...shared,
+      completedTodayIds: ["1"],
+      xpEarnedToday: { body: 10 },
+      closingLine: "A closing line.",
     });
-    expect(new Set(closings).size).toBe(7);
+    const emptyWithClosing = computeNightlyReport({ ...shared, completedTodayIds: [], closingLine: "A closing line." });
+    expect(completeWithClosing).toHaveLength(5);
+    expect(emptyWithClosing).toHaveLength(4);
+    expect(emptyWithClosing.length).toBe(completeWithClosing.length - 1);
+
+    const completeNoClosing = computeNightlyReport({
+      ...shared,
+      completedTodayIds: ["1"],
+      xpEarnedToday: { body: 10 },
+      closingLine: null,
+    });
+    const emptyNoClosing = computeNightlyReport({ ...shared, completedTodayIds: [], closingLine: null });
+    expect(completeNoClosing).toHaveLength(4);
+    expect(emptyNoClosing).toHaveLength(3);
+    expect(emptyNoClosing.length).toBe(completeNoClosing.length - 1);
+  });
+});
+
+describe("momentum qualifier derived from delta, not from today's activity (milestone-4.1-fixes.md §5)", () => {
+  const emptyDayWith = (delta: number | null): string[] =>
+    computeNightlyReport({ ...BASE, momentum: { ...STRONG, delta }, closingLine: null });
+
+  it("delta above the stable band -> improving", () => {
+    expect(emptyDayWith(0.1)).toContain("Momentum: Strong — improving");
   });
 
-  it("an empty day reads shorter than a full day, by content — not necessarily by line count", () => {
-    // milestone-4-spec.md §6 / PRD §12.3's governing rule: "a day with
-    // nothing logged produces a shorter report, not a longer one." Both
-    // variants hit the 5-line cap (confirmed above), including in the
-    // PRD's own worked examples — so "shorter" has to mean less actual
-    // content (characters), not fewer lines. Checked across several day
-    // indices so it isn't a coincidence of one closing-line pick.
-    const fullDay: NightlyReportInput = {
-      ...BASE,
-      weekCommitments: [
-        { id: "1", label: "a" },
-        { id: "2", label: "b" },
-      ],
-      completedTodayIds: ["1", "2"],
-      xpEarnedToday: { body: 50, career: 25 },
-    };
-    for (let i = 0; i < 7; i++) {
-      const day = `2020-04-${String(i + 1).padStart(2, "0")}`;
-      const fullChars = computeNightlyReport({ ...fullDay, logicalDay: day }).join("").length;
-      const emptyChars = computeNightlyReport({ ...BASE, logicalDay: day }).join("").length;
-      expect(emptyChars).toBeLessThan(fullChars);
-    }
+  it("delta below the negative stable band -> slipping", () => {
+    expect(emptyDayWith(-0.1)).toContain("Momentum: Strong — slipping");
+  });
+
+  it("delta within the band -> unchanged", () => {
+    expect(emptyDayWith(0.01)).toContain("Momentum: Strong — unchanged");
+  });
+
+  it("null delta -> no qualifier at all", () => {
+    expect(emptyDayWith(null)).toContain("Momentum: Strong");
+    expect(emptyDayWith(null).some((line) => line.includes("—"))).toBe(false);
   });
 });
