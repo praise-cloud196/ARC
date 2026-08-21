@@ -18,6 +18,26 @@ docs/milestone-4.1-fixes.md §1: the event log is append-only, so development an
 
 `lib/db-guard.ts` enforces the boundary: `scripts/backup.ts`, `scripts/restore.ts`, `scripts/rebuild.ts`, `scripts/boundary-job.ts`, `scripts/migrate.ts`, and the whole test suite all query `neon.branch_id` from whatever database they're pointed at and refuse to proceed if it matches `ARC_PRODUCTION_BRANCH_ID`, unless `ARC_ALLOW_PRODUCTION_WRITE=1` is set in that specific invocation's environment (same pattern as `ARC_ALLOW_DESTRUCTIVE_MIGRATION` below — deliberately not a casual flag). The one thing that legitimately runs against `main` outside the deployed app is the scheduled production backup (see "Backups"), which sets that flag permanently in its own environment. See `.env.production.example` for what a deliberate one-off run against production (a manual migration, say) needs.
 
+## Auth
+
+`proxy.ts` (Next.js 16 renamed `middleware.ts` to `proxy.ts` — same mechanism) gates every route behind one password, since this is a single-user product with no accounts (AGENTS.md). `lib/auth.ts` hashes the configured `AUTH_PASSWORD` (SHA-256) into a session cookie (`arc_auth`, httpOnly, 1 year) set by `/login`; unauthenticated requests are redirected there. Excluded from the gate, deliberately: `/login` itself, `/api/cron/*` (its own bearer-token `CRON_SECRET` auth — Vercel Cron can't carry a session cookie), and the PWA's static assets (`/manifest.json`, `/icon.svg`, `/sw.js` — blocking `sw.js` behind a login redirect would break installability). Fails closed: if `AUTH_PASSWORD` isn't set, every request gets a 500, never an unauthenticated pass-through.
+
+## Deployment
+
+The app runs on Vercel, pointed at `main`. Steps:
+
+1. Import this repo into Vercel (dashboard → Add New → Project, or `vercel link` if using the CLI) and select the `main` git branch for Production.
+2. Set these Production environment variables (Vercel dashboard → Project → Settings → Environment Variables), all real values already in `.env.production` locally:
+   - `DATABASE_URL` — the Neon `main` branch's connection string
+   - `ARC_TIMEZONE` — `Africa/Lagos`
+   - `AUTH_PASSWORD` — the one login password (see `.env.production`)
+   - `CRON_SECRET` — the boundary job's bearer token (see `.env.production`)
+   - `ARC_DISPLAY_HOUR` — optional, defaults to 20
+   
+   Deliberately **not** set on Vercel: `ARC_BACKUP_KEY`, `ARC_PRODUCTION_BRANCH_ID`, `ARC_ALLOW_PRODUCTION_WRITE` — none of these are read by the running app, only by local scripts/tests (see "Environments" above and `lib/db-guard.ts`); setting `ARC_ALLOW_PRODUCTION_WRITE` there specifically would be meaningless (the app never checks it) but wrong to normalize.
+3. Deploy. `vercel.json`'s cron entry (`GET /api/cron/boundary` at `0 5 * * *` UTC) activates automatically on the Production deployment — no separate setup.
+4. First visit will redirect to `/login`; the password is in `.env.production`. After that, `/` will redirect to `/audit` until the real baseline audit is run once.
+
 ## Database
 
 Schema changes live in `db/migrations/*.sql`, applied in order and tracked in `schema_migrations`. `db/schema.sql` is a generated reference of the current cumulative state — edit it for documentation, but a schema change happens by adding a new migration file, never by editing that file and re-running it.
