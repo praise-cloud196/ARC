@@ -266,7 +266,7 @@ A season cannot be failed. Its only output is a chapter and a set of conclusions
 
 Behind its own entrance. Never appears on the morning screen. Never affects XP. Never appears in the nightly report unless the user navigates to it.
 
-**Stances**, per behaviour: *Observing · Reducing · Abstaining · Not now*. Stances may only be changed at season boundaries. **Not now** means the behaviour is not tracked, not counted, and never referenced by the system in any surface.
+**Stances**, per behaviour: *Observing · Reducing · Abstaining · Not now*. Declaring a new behaviour (naming one for the first time) is permitted at any time; changing the stance on a behaviour already named is restricted to season boundaries. **Not now** means the behaviour is not tracked, not counted, and never referenced by the system in any surface.
 
 **Event logging.** Two taps: time is implicit; the user selects a state and a preceding condition from short fixed lists. Free text optional. No reflection prompt at the moment of logging.
 

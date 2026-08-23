@@ -153,7 +153,7 @@ Metrics are user-defined and few: weight, pull-ups, push-ups, sessions, distance
 - **Abstaining** — currently walking away entirely
 - **Not now** — not tracked, not counted, not mentioned by the system
 
-*Not now* is a first-class feature. Being able to honestly say "I'm not ready for this one" without being nagged is the difference between a record you trust and one you start hiding things from. Stances are reviewed only at season boundaries.
+*Not now* is a first-class feature. Being able to honestly say "I'm not ready for this one" without being nagged is the difference between a record you trust and one you start hiding things from. Naming a new behaviour is never gated — noticing something worth tracking shouldn't have to wait for a boundary. Reconsidering the stance on one already named is what's reviewed only at season boundaries.
 
 **No day counters. Ever.** A "14 days clean" number turns day 15 into a catastrophe, and the catastrophe produces the multi-week collapse — not the lapse. Rolling 28-day density instead: *9 in the last 28 days, down from 15.* One lapse moves the number slightly. The trend survives.
 

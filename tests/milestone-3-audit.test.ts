@@ -202,6 +202,45 @@ describe.skipIf(!hasDb)("`not_now` stances are unreachable outside management (m
   });
 });
 
+describe.skipIf(!hasDb)("Stance changes are restricted to season boundaries (PRD §16)", () => {
+  it("allows declaring a new behaviour after the audit boundary has closed", async () => {
+    const pool = getPool();
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await seedMinimumMarks(client, ["career", "body", "attention"]);
+      await completeAudit(client, { startingRank: "E" });
+
+      const stance = await setStance(client, { behaviour: "doomscrolling", stance: "reducing" });
+      expect(stance.type).toBe("stance.changed");
+
+      await client.query("ROLLBACK");
+    } finally {
+      client.release();
+    }
+  });
+
+  it("rejects changing an already-named behaviour's stance once the audit boundary has closed", async () => {
+    const pool = getPool();
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await seedMinimumMarks(client, ["career", "body", "attention"]);
+      await setStance(client, { behaviour: "doomscrolling", stance: "observing" });
+      await completeAudit(client, { startingRank: "E" });
+
+      await expect(setStance(client, { behaviour: "doomscrolling", stance: "abstaining" })).rejects.toThrow();
+
+      const all = await getAllStancesForManagement(client);
+      expect(all.find((s) => s.behaviour === "doomscrolling")?.stance).toBe("observing");
+
+      await client.query("ROLLBACK");
+    } finally {
+      client.release();
+    }
+  });
+});
+
 describe.skipIf(!hasDb)("Starting rank (milestone-3-spec.md §6)", () => {
   it("proposes E, D, or C per the deterministic domain/mark thresholds", async () => {
     const pool = getPool();

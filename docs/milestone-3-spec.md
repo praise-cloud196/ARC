@@ -71,7 +71,7 @@ This is where AGENTS.md hard rule 10 finally gets implemented.
 
 **The filter is at the query layer.** Every read of stances that is not the stance-management screen itself must exclude `not_now`. Not a UI conditional — a `WHERE` clause in the data access function, so a future surface cannot forget it.
 
-Stances may only be changed at season boundaries (PRD §16). The audit is Season 01's opening, so setting them here is legitimate.
+Declaring a new behaviour is permitted at any time; changing the stance on one already named is restricted to season boundaries (PRD §16). The audit is Season 01's opening, so setting them here — new or existing — is legitimate.
 
 ## 5. What the audit must not do to momentum
 

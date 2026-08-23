@@ -11,12 +11,15 @@
  * stance-management screen itself, where `not_now` behaviours must still be
  * visible so they can be reactivated.
  *
- * Stances may only be changed at season boundaries (PRD §16); Season 01's
- * opening (the audit) is itself a boundary, so setting them here is
- * legitimate (milestone-3-spec.md §4). Enforcing that restriction in
- * general — rejecting a change mid-season — is milestone 7 scope, once
- * season boundaries are something the data layer can actually detect; it
- * isn't enforced here yet.
+ * Declaring a new behaviour is permitted at any time; changing the stance
+ * on one already named is restricted to season boundaries (PRD §16).
+ * Season 01's opening (the audit) is itself a boundary, so setting stances
+ * — new or existing — during the audit is legitimate (milestone-3-spec.md
+ * §4). The only boundary the data layer can currently detect is that one:
+ * `audit.completed` not yet having been written means Season 01's opening
+ * boundary is still in progress. Detecting *later* boundaries (Season 02's
+ * opening, a close/reopen cycle) is milestone 7 scope, once season close
+ * exists — `isWithinSeasonBoundary` will need extending there.
  */
 import type { PoolClient } from "pg";
 import { appendAttentionEvent, type AppendedAttentionEvent } from "./attention-events";
@@ -59,6 +62,19 @@ function mapRow(row: StanceRow): Stance {
   };
 }
 
+/**
+ * Season 01's opening (the audit) is the only season boundary the data
+ * layer can currently detect: it's still in progress until
+ * `audit.completed` is written (lib/audit.ts's `completeAudit`). See this
+ * file's header comment for what's deferred to milestone 7.
+ */
+async function isWithinSeasonBoundary(client: PoolClient): Promise<boolean> {
+  const completed = await client.query<{ exists: boolean }>(
+    `SELECT EXISTS(SELECT 1 FROM events WHERE type = 'audit.completed') AS exists`
+  );
+  return !(completed.rows[0]?.exists ?? false);
+}
+
 /** Gated on the retroactive-Marks minimum, same as lib/quests.ts's recordOutcome — see its comment. */
 export async function setStance(client: PoolClient, input: SetStanceInput): Promise<AppendedAttentionEvent> {
   const stats = await retroactiveMarkStats(client);
@@ -66,6 +82,18 @@ export async function setStance(client: PoolClient, input: SetStanceInput): Prom
     throw new Error(
       `Cannot set a stance before ${AUDIT_MIN_RETROACTIVE_MARKS} retroactive Marks are logged ` +
         `(have ${stats.count}).`
+    );
+  }
+
+  // Declaring a new behaviour is always allowed; changing the stance on one
+  // already named is restricted to season boundaries (PRD §16).
+  const existing = await client.query<{ id: string }>(`SELECT id FROM stances WHERE behaviour = $1`, [
+    input.behaviour,
+  ]);
+  if (existing.rows.length > 0 && !(await isWithinSeasonBoundary(client))) {
+    throw new Error(
+      `Cannot change the stance on "${input.behaviour}" outside a season boundary. ` +
+        `Declaring a new behaviour is always allowed; changing one already named must wait for the next season boundary.`
     );
   }
 
