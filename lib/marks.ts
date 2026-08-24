@@ -1,9 +1,13 @@
 /**
- * Retroactive Marks (milestone-3-spec.md §3) — the audit's step 2. General
- * (non-retroactive) Mark-writing is milestone 6 scope ("Marks and
- * evidence") and isn't built here; this module covers only what the audit
- * needs: writing a retroactive Mark and reading back the count/domains that
- * gate later audit steps and feed the starting-rank proposal (lib/rank.ts).
+ * Marks (milestone-3-spec.md §3, PRD §14). `recordRetroactiveMark` is the
+ * audit's step 2 — it requires an `occurredAt` because backdating is the
+ * whole point, and it tags `payload.retroactive = true` so
+ * `retroactiveMarkStats` (the audit-progress/starting-rank gate) counts only
+ * these. `recordMark` is the ordinary, present-day version used after the
+ * audit — same required note, same optional artifact, no retroactive flag,
+ * `occurredAt` defaults to now. `events_mark_has_note`
+ * (db/migrations/0006_baseline_audit.sql) enforces the note requirement for
+ * both at the data layer, deliberately not distinguishing the two.
  */
 import type { Pool, PoolClient } from "pg";
 import { appendEvent, type AppendedEvent } from "./events";
@@ -37,6 +41,50 @@ export async function recordRetroactiveMark(
     payload,
     timezone: input.timezone ?? getTimezone(),
   });
+}
+
+export interface RecordMarkInput {
+  domain: Domain;
+  /** "What changed because of this?" (PRD §14) — required. */
+  note: string;
+  artifact?: string;
+  occurredAt?: Date;
+  timezone?: string;
+}
+
+/** Ordinary, present-day Mark — see this file's header comment for how it differs from `recordRetroactiveMark`. */
+export async function recordMark(client: Queryable, input: RecordMarkInput): Promise<AppendedEvent> {
+  const payload: Record<string, unknown> = { note: input.note };
+  if (input.artifact !== undefined) payload.artifact = input.artifact;
+
+  return appendEvent(client, {
+    type: "mark.recorded",
+    occurredAt: input.occurredAt ?? new Date(),
+    domain: input.domain,
+    payload,
+    timezone: input.timezone ?? getTimezone(),
+  });
+}
+
+/** Most recent Marks, newest first — for a simple confirmation list, not the full effective-event log. */
+export async function listRecentMarks(client: Queryable, limit = 10): Promise<AppendedEvent[]> {
+  const result = await client.query(
+    `SELECT id, type, occurred_at, recorded_at, logical_day, timezone, domain, subject_id, payload, idempotency_key
+     FROM events WHERE type = 'mark.recorded' ORDER BY recorded_at DESC LIMIT $1`,
+    [limit]
+  );
+  return result.rows.map((row) => ({
+    id: row.id,
+    type: row.type,
+    occurredAt: row.occurred_at,
+    recordedAt: row.recorded_at,
+    logicalDay: row.logical_day,
+    timezone: row.timezone,
+    domain: row.domain,
+    subjectId: row.subject_id,
+    payload: row.payload,
+    idempotencyKey: row.idempotency_key,
+  }));
 }
 
 export interface RetroactiveMarkStats {

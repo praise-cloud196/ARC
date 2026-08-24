@@ -38,3 +38,34 @@ export async function countMetrics(client: Queryable): Promise<number> {
   );
   return result.rows[0]?.count ?? 0;
 }
+
+export interface RecentMetric {
+  id: string;
+  domain: Domain | null;
+  metric: string;
+  value: number;
+  unit: string;
+  occurredAt: Date;
+}
+
+/** Most recent metrics, newest first — for a simple confirmation list, not a full history view. */
+export async function listRecentMetrics(client: Queryable, limit = 10): Promise<RecentMetric[]> {
+  const result = await client.query<{
+    id: string;
+    domain: Domain | null;
+    payload: { metric: string; value: number; unit: string };
+    occurred_at: Date;
+  }>(
+    `SELECT id, domain, payload, occurred_at FROM events
+     WHERE type = 'metric.recorded' ORDER BY recorded_at DESC LIMIT $1`,
+    [limit]
+  );
+  return result.rows.map((row) => ({
+    id: row.id,
+    domain: row.domain,
+    metric: row.payload.metric,
+    value: row.payload.value,
+    unit: row.payload.unit,
+    occurredAt: row.occurred_at,
+  }));
+}

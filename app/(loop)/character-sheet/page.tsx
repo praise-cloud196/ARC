@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { withReadTransaction } from "@/lib/with-transaction";
 import { computeIdentity } from "@/lib/identity";
 import { listOutcomes } from "@/lib/quests";
@@ -59,6 +60,18 @@ export default async function CharacterSheetPage() {
             </li>
           ))}
         </ul>
+      </section>
+
+      <section className="mt-10 flex flex-wrap gap-x-5 gap-y-2 border-t border-border pt-6">
+        <Link href="/marks" className="font-mono text-xs uppercase tracking-wide2 text-ink-faint">
+          Marks
+        </Link>
+        <Link href="/metrics" className="font-mono text-xs uppercase tracking-wide2 text-ink-faint">
+          Metrics
+        </Link>
+        <Link href="/stances" className="font-mono text-xs uppercase tracking-wide2 text-ink-faint">
+          Stances
+        </Link>
       </section>
     </main>
   );

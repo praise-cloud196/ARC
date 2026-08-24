@@ -68,7 +68,7 @@ function mapRow(row: StanceRow): Stance {
  * `audit.completed` is written (lib/audit.ts's `completeAudit`). See this
  * file's header comment for what's deferred to milestone 7.
  */
-async function isWithinSeasonBoundary(client: PoolClient): Promise<boolean> {
+export async function isWithinSeasonBoundary(client: PoolClient): Promise<boolean> {
   const completed = await client.query<{ exists: boolean }>(
     `SELECT EXISTS(SELECT 1 FROM events WHERE type = 'audit.completed') AS exists`
   );
