@@ -44,7 +44,7 @@ async function resumeStep(): Promise<Step> {
 function StepNav({ current }: { current: Step }) {
   return (
     <>
-      <BackLink href="/" label="Today" />
+      <BackLink href="/" label="Today" realNav />
       <SystemVoice as="div" size="sm" className="text-ink-faint mb-8">
         Step {STEP_ORDER.indexOf(current) + 1} of {STEP_ORDER.length} — Baseline Audit
       </SystemVoice>

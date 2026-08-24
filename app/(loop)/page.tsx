@@ -17,6 +17,17 @@ import type { CommitmentRowData } from "@/app/components/CommitmentRow";
 // once at build time and every visitor gets that frozen snapshot forever.
 export const dynamic = "force-dynamic";
 
+// Deliberately no Suspense boundary here. docs/design-revision-v1.md §5b's
+// screen transition relies on a *cross-document* navigation (Nav.tsx /
+// BackLink.tsx render a real `<a>` for any link touching this route) —
+// and that mechanism needs the whole response, including this panel,
+// ready in one shot: a `<Suspense fallback={null}>` split was tried and
+// makes the transition capture the *empty* fallback instead, since
+// content streamed in later never gets re-captured (confirmed directly:
+// the named panel-transition element only ever animated once the split
+// was removed and this page went back to blocking fully before
+// responding, however long that takes). Blocking here is correct, not a
+// perf bug to fix — see globals.css's screen-transition comment.
 export default async function TodayPage() {
   const auditCompleted = await withReadTransaction(async (client) => {
     const result = await client.query(`SELECT 1 FROM events WHERE type = 'audit.completed' LIMIT 1`);

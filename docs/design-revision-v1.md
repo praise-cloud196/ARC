@@ -72,6 +72,23 @@ System panels appear. They do not simply exist.
 
 Nothing else in the product animates.
 
+## 5b. Screen transitions
+
+The arrival rule implies its opposite: if a panel *arrives*, it should also *leave*. A cross-fade between two screens would contradict the whole premise, because it implies the panel was a layer of the page rather than an object delivered to it.
+
+So: **dismiss, empty ground, arrive.**
+
+- Outgoing panel: opacity `1 → 0`, translateY `0 → 4px`, over 120ms ease-in
+- **60ms of empty `--ground`.** Nothing on screen. This beat is the effect — it's what makes the next panel feel delivered rather than swapped.
+- Incoming panel: the standard arrival from §5
+- Total roughly 380ms
+
+**Blackout, never whiteout.** White is off-palette entirely and a flash of it at 6am or 2am is genuinely unpleasant. The empty state between panels is `--ground` — the product going briefly dark is consistent with everything else about it.
+
+Applies to navigation between screens only. **Not** to form submissions, not to completing a commitment, not to anything within a screen — those should feel instant. A transition on every interaction makes the product feel slow, and the Loop has a three-minute budget to protect.
+
+`prefers-reduced-motion`: no transition, instant swap.
+
 ## 6. Bracketed announcements
 
 System events are announced in the panel header:
