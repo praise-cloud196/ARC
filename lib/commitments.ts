@@ -9,7 +9,7 @@
  */
 import type { Pool, PoolClient } from "pg";
 import { appendCorrection, appendEvent, type AppendedEvent } from "./events";
-import { getTimezone } from "./logical-day";
+import { computeLogicalDay, getTimezone } from "./logical-day";
 import { addDays, startOfWeek } from "./day-math";
 import type { Domain } from "./domains";
 import {
@@ -162,10 +162,78 @@ export async function patchCommitmentCompletion(
   });
 }
 
-/** Count of commitment.completed events (corrections don't change the count — only ever patch resistance/note) for `commitmentId` within [activeFrom, activeUntil]. */
+export interface VoidCommitmentCompletionInput {
+  completionEventId: string;
+  occurredAt?: Date;
+  timezone?: string;
+}
+
+/**
+ * Withdraws a completion (design-revision-v2.md §7): the log is
+ * append-only, so a mis-tap on Complete would otherwise be permanent —
+ * a correction can fix a wrong tier or resistance, but never previously
+ * withdrew the event itself. Writes commitment.completed.corrected with
+ * payload.voided = true via the normal correction path; the original
+ * event is never removed, so the record shows what happened and that it
+ * was withdrawn, which is the honest version.
+ *
+ * Only allowed for the rest of the completion's own logical day — not a
+ * general undo, and not a backdoor around the append-only design for
+ * retroactively editing older conduct. Enforced here, not just hidden in
+ * the UI once the day passes (AGENTS.md hard rule 9's pattern: a stale
+ * client tab open past the boundary must not be able to submit this).
+ *
+ * Every consumer of a completion's effective payload (lib/xp.ts,
+ * lib/dormancy.ts, this module's own countCompletions/
+ * computeCurrentMomentum, lib/loop.ts's report assembly) must treat
+ * `voided: true` as "this completion contributes nothing" — see each highlighted
+ * with this same design-revision-v2.md §7 reference.
+ */
+export async function voidCommitmentCompletion(
+  client: Queryable,
+  input: VoidCommitmentCompletionInput
+): Promise<AppendedEvent> {
+  const original = await client.query<{ logical_day: string }>(
+    `SELECT logical_day FROM events WHERE id = $1 AND type = 'commitment.completed'`,
+    [input.completionEventId]
+  );
+  const originalRow = original.rows[0];
+  if (!originalRow) {
+    throw new Error(`No commitment.completed event found with id ${input.completionEventId}`);
+  }
+
+  const timezone = input.timezone ?? getTimezone();
+  const now = input.occurredAt ?? new Date();
+  const today = computeLogicalDay(now, timezone);
+  if (originalRow.logical_day !== today) {
+    throw new Error("A completion can only be undone on the day it happened.");
+  }
+
+  return appendCorrection(client, {
+    correctsType: "commitment.completed",
+    correctsEventId: input.completionEventId,
+    payload: { voided: true },
+    occurredAt: now,
+    timezone,
+  });
+}
+
+/**
+ * Count of commitment.completed events for `commitmentId` within
+ * [activeFrom, activeUntil] — voided completions excluded
+ * (design-revision-v2.md §7: a withdrawn completion must not count toward
+ * meeting the weekly target, so lib/boundary-job.ts's under-target check
+ * (the only caller) reads correctly). Corrections that aren't a void
+ * (resistance/note) don't change the count, only the payload.
+ */
 export async function countCompletions(client: Queryable, commitmentId: string): Promise<number> {
   const result = await client.query<{ count: number }>(
-    `SELECT count(*)::int AS count FROM events WHERE type = 'commitment.completed' AND subject_id = $1`,
+    `SELECT count(*)::int AS count FROM events e
+     WHERE type = 'commitment.completed' AND subject_id = $1
+     AND NOT EXISTS (
+       SELECT 1 FROM events c
+       WHERE c.type = 'commitment.completed.corrected' AND c.subject_id = e.id AND c.payload->>'voided' = 'true'
+     )`,
     [commitmentId]
   );
   return result.rows[0]?.count ?? 0;
@@ -178,6 +246,12 @@ export async function countCompletions(client: Queryable, commitmentId: string):
  * compares (milestone-2-spec.md §3.1), every commitment.completed in that
  * range, and every logical day with a MOMENTUM_CONDUCT_EVENT_TYPES event,
  * then calls the pure computeMomentum with the result.
+ *
+ * Both queries below exclude voided completions (design-revision-v2.md
+ * §7: a withdrawn completion "contributes nothing to XP, momentum, or the
+ * report") — a completion event's own `type` never changes once voided
+ * (only a `.corrected` row gets added), so each query filters it out via
+ * NOT EXISTS against that correction rather than trusting the raw type.
  */
 export async function computeCurrentMomentum(client: Queryable, asOfLogicalDay: string): Promise<MomentumResult> {
   const lookbackStart = addDays(asOfLogicalDay, -(2 * MOMENTUM_WINDOW_DAYS - 1));
@@ -196,8 +270,12 @@ export async function computeCurrentMomentum(client: Queryable, asOfLogicalDay: 
   }));
 
   const completionsResult = await client.query<{ commitment_id: string; logical_day: string }>(
-    `SELECT subject_id AS commitment_id, logical_day FROM events
-     WHERE type = 'commitment.completed' AND logical_day >= $1 AND logical_day <= $2`,
+    `SELECT subject_id AS commitment_id, logical_day FROM events e
+     WHERE type = 'commitment.completed' AND logical_day >= $1 AND logical_day <= $2
+     AND NOT EXISTS (
+       SELECT 1 FROM events c
+       WHERE c.type = 'commitment.completed.corrected' AND c.subject_id = e.id AND c.payload->>'voided' = 'true'
+     )`,
     [lookbackStart, asOfLogicalDay]
   );
   const completions: MomentumCompletion[] = completionsResult.rows.map((row) => ({
@@ -206,8 +284,14 @@ export async function computeCurrentMomentum(client: Queryable, asOfLogicalDay: 
   }));
 
   const conductResult = await client.query<{ logical_day: string }>(
-    `SELECT DISTINCT logical_day FROM events
-     WHERE type = ANY($1) AND logical_day >= $2 AND logical_day <= $3`,
+    `SELECT DISTINCT logical_day FROM events e
+     WHERE type = ANY($1) AND logical_day >= $2 AND logical_day <= $3
+     AND NOT (
+       e.type = 'commitment.completed' AND EXISTS (
+         SELECT 1 FROM events c
+         WHERE c.type = 'commitment.completed.corrected' AND c.subject_id = e.id AND c.payload->>'voided' = 'true'
+       )
+     )`,
     [MOMENTUM_CONDUCT_EVENT_TYPES as unknown as string[], lookbackStart, asOfLogicalDay]
   );
   const conductLogicalDays = conductResult.rows.map((row) => row.logical_day);

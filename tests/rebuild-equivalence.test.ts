@@ -11,6 +11,7 @@ import { appendAttentionEvent } from "../lib/attention-events";
 import { getPool } from "../lib/db";
 import { appendCorrection, appendEvent } from "../lib/events";
 import { rebuildDailyRollup } from "../lib/rollup";
+import { computeDomainXp } from "../lib/xp";
 
 const hasDb = Boolean(process.env.DATABASE_URL);
 
@@ -157,6 +158,58 @@ describe.skipIf(!hasDb)("rebuild equivalence", () => {
 
       await client.query("ROLLBACK");
     } finally {
+      client.release();
+    }
+  });
+
+  it("still passes with voided and corrected events present (design-revision-v2.md §7.4)", async () => {
+    const pool = getPool();
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const kept = await appendEvent(client, {
+        type: "commitment.completed",
+        occurredAt: new Date("2026-04-01T10:00:00-05:00"),
+        domain: "body",
+        payload: { tier: 2 },
+      });
+      const voided = await appendEvent(client, {
+        type: "commitment.completed",
+        occurredAt: new Date("2026-04-01T11:00:00-05:00"),
+        domain: "body",
+        payload: { tier: 1 },
+      });
+      await appendCorrection(client, {
+        correctsType: "commitment.completed",
+        correctsEventId: voided.id,
+        payload: { voided: true },
+      });
+      const metric = await appendEvent(client, {
+        type: "metric.recorded",
+        occurredAt: new Date("2026-04-01T12:00:00-05:00"),
+        domain: "body",
+        payload: { metric: "weight", value: 82, unit: "kg" },
+      });
+      await appendCorrection(client, {
+        correctsType: "metric.recorded",
+        correctsEventId: metric.id,
+        payload: { value: 81.5 },
+      });
+
+      const first = await rebuildDailyRollup(client);
+      const second = await rebuildDailyRollup(client);
+      expect(second).toEqual(first);
+
+      // The voided completion contributes no XP either — same log, same conclusion two different ways.
+      expect(await computeDomainXp(client, "body")).toBe(25); // tier 2 only (XP_TIER_VALUES[2])
+
+      const keptCheck = await client.query(`SELECT id FROM events WHERE id = $1`, [kept.id]);
+      expect(keptCheck.rows).toHaveLength(1);
+
+      await client.query("ROLLBACK");
+    } finally {
+      await client.query("ROLLBACK").catch(() => {});
       client.release();
     }
   });

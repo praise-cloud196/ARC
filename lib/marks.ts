@@ -10,7 +10,7 @@
  * both at the data layer, deliberately not distinguishing the two.
  */
 import type { Pool, PoolClient } from "pg";
-import { appendEvent, type AppendedEvent } from "./events";
+import { appendCorrection, appendEvent, type AppendedEvent } from "./events";
 import { fetchRawEventRows, resolveEffectiveEvents, type EffectiveEvent } from "./effective-events";
 import { getTimezone } from "./logical-day";
 import type { Domain } from "./domains";
@@ -66,25 +66,79 @@ export async function recordMark(client: Queryable, input: RecordMarkInput): Pro
   });
 }
 
-/** Most recent Marks, newest first — for a simple confirmation list, not the full effective-event log. */
-export async function listRecentMarks(client: Queryable, limit = 10): Promise<AppendedEvent[]> {
-  const result = await client.query(
-    `SELECT id, type, occurred_at, recorded_at, logical_day, timezone, domain, subject_id, payload, idempotency_key
-     FROM events WHERE type = 'mark.recorded' ORDER BY recorded_at DESC LIMIT $1`,
-    [limit]
-  );
-  return result.rows.map((row) => ({
-    id: row.id,
-    type: row.type,
-    occurredAt: row.occurred_at,
-    recordedAt: row.recorded_at,
-    logicalDay: row.logical_day,
-    timezone: row.timezone,
-    domain: row.domain,
-    subjectId: row.subject_id,
-    payload: row.payload,
-    idempotencyKey: row.idempotency_key,
+export interface RecentMark {
+  id: string;
+  domain: Domain | null;
+  note: string;
+  artifact: string | null;
+  occurredAt: Date;
+  logicalDay: string;
+  voided: boolean;
+}
+
+/**
+ * Most recent Marks, newest first, corrections applied — for the /marks
+ * list, not the full effective-event log. `includeVoided` powers the
+ * "show withdrawn" toggle (design-revision-v2.md §7.3); a Mark voided via
+ * `voidMark` is otherwise excluded (§7.2's default), and an edited one
+ * shows its latest note/artifact, not the original typo.
+ */
+export async function listRecentMarks(
+  client: Queryable,
+  limit = 10,
+  includeVoided = false
+): Promise<RecentMark[]> {
+  const rows = await fetchRawEventRows(client);
+  const marks = resolveEffectiveEvents(rows, { includeVoided })
+    .filter((e) => e.type === "mark.recorded")
+    .sort((a, b) => b.occurredAt.getTime() - a.occurredAt.getTime())
+    .slice(0, limit);
+
+  return marks.map((e) => ({
+    id: e.id,
+    domain: e.domain as Domain | null,
+    note: typeof e.payload.note === "string" ? e.payload.note : "",
+    artifact: typeof e.payload.artifact === "string" ? e.payload.artifact : null,
+    occurredAt: e.occurredAt,
+    logicalDay: e.logicalDay,
+    voided: e.payload.voided === true,
   }));
+}
+
+export interface EditMarkInput {
+  markEventId: string;
+  note?: string;
+  artifact?: string;
+  timezone?: string;
+}
+
+/** Corrects a Mark's note/artifact (design-revision-v2.md §7.1/§7.2) — a record, editable at any time, no same-day restriction. */
+export async function editMark(client: Queryable, input: EditMarkInput): Promise<AppendedEvent> {
+  const payload: Record<string, unknown> = {};
+  if (input.note !== undefined) payload.note = input.note;
+  if (input.artifact !== undefined) payload.artifact = input.artifact;
+
+  return appendCorrection(client, {
+    correctsType: "mark.recorded",
+    correctsEventId: input.markEventId,
+    payload,
+    timezone: input.timezone,
+  });
+}
+
+export interface VoidMarkInput {
+  markEventId: string;
+  timezone?: string;
+}
+
+/** Withdraws a Mark (design-revision-v2.md §7.1/§7.2) — a record, voidable at any time. The original is never removed. */
+export async function voidMark(client: Queryable, input: VoidMarkInput): Promise<AppendedEvent> {
+  return appendCorrection(client, {
+    correctsType: "mark.recorded",
+    correctsEventId: input.markEventId,
+    payload: { voided: true },
+    timezone: input.timezone,
+  });
 }
 
 export interface RetroactiveMarkStats {

@@ -30,7 +30,12 @@ function isXpTier(value: unknown): value is XpTier {
   return typeof value === "number" && value in XP_TIER_VALUES;
 }
 
-/** Pure — no I/O. See `computeDomainXp` below for what this computes and why. */
+/**
+ * Pure — no I/O. See `computeDomainXp` below for what this computes and
+ * why. `events` is expected to come from resolveEffectiveEvents's default
+ * (voided-excluding) behaviour — design-revision-v2.md §7.2 — so a voided
+ * commitment.completed never reaches this loop at all.
+ */
 export function computeDomainXpFromEvents(events: EffectiveEvent[], domain: Domain): number {
   let xp = 0;
   for (const event of events) {
@@ -95,11 +100,16 @@ export function computeDomainLevelFromRows(rows: RawEventRow[], domain: Domain):
     })
     .sort((a, b) => a.recorded_at.getTime() - b.recorded_at.getTime());
 
-  // Current known {tier, domain} per original event id, updated in place as
-  // corrections for it are encountered further down the log. `totalXp`
-  // tracks the running sum for `domain` incrementally rather than summing
-  // `known` fresh on every row.
-  const known = new Map<string, { tier: XpTier; domain: string | null }>();
+  // Current known {tier, domain, voided} per original event id, updated in
+  // place as corrections for it are encountered further down the log.
+  // `totalXp` tracks the running sum for `domain` incrementally rather
+  // than summing `known` fresh on every row. A voided completion
+  // (design-revision-v2.md §7) contributes zero from the point its void
+  // correction appears in write order onward — same mechanism as any
+  // other downward correction, which is why the high-water mark from
+  // *before* the void still stands (AGENTS.md hard rule 12): the level
+  // was briefly, genuinely reached before the record was corrected.
+  const known = new Map<string, { tier: XpTier; domain: string | null; voided: boolean }>();
   let totalXp = 0;
   let maxLevel = 1;
 
@@ -113,11 +123,12 @@ export function computeDomainLevelFromRows(rows: RawEventRow[], domain: Domain):
     if (!isXpTier(tier)) {
       throw new Error(`${row.type} event ${row.id} has no valid payload.tier (got ${JSON.stringify(tier)})`);
     }
+    const voided = row.payload.voided === true;
 
     const previous = known.get(originalId);
-    if (previous && previous.domain === domain) totalXp -= XP_TIER_VALUES[previous.tier];
-    if (row.domain === domain) totalXp += XP_TIER_VALUES[tier];
-    known.set(originalId, { tier, domain: row.domain });
+    if (previous && !previous.voided && previous.domain === domain) totalXp -= XP_TIER_VALUES[previous.tier];
+    if (row.domain === domain && !voided) totalXp += XP_TIER_VALUES[tier];
+    known.set(originalId, { tier, domain: row.domain, voided });
 
     const level = levelForXp(totalXp);
     if (level > maxLevel) maxLevel = level;

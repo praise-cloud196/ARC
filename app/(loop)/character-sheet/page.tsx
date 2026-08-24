@@ -69,6 +69,9 @@ export default async function CharacterSheetPage() {
         <Link href="/metrics" className="font-mono text-xs uppercase tracking-wide2 text-ink-faint">
           Metrics
         </Link>
+        <Link href="/notes" className="font-mono text-xs uppercase tracking-wide2 text-ink-faint">
+          Notes
+        </Link>
         <Link href="/stances" className="font-mono text-xs uppercase tracking-wide2 text-ink-faint">
           Stances
         </Link>

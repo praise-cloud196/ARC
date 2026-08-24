@@ -1,26 +1,27 @@
 import { withReadTransaction } from "@/lib/with-transaction";
-import { listRecentMarks } from "@/lib/marks";
+import { listRecentNotes } from "@/lib/notes";
 import { DOMAINS } from "@/lib/domains";
 import { BackLink } from "@/app/components/BackLink";
 import { SystemVoice } from "@/app/components/SystemVoice";
-import { submitMark, submitEditMark, submitVoidMark } from "./actions";
+import { submitNote, submitEditNote, submitVoidNote } from "./actions";
 
 /**
- * Ordinary (non-retroactive) Mark recording, after the audit — the audit's
- * own wizard (app/audit/) only ever writes retroactive Marks. See
- * lib/marks.ts's header comment for how the two differ.
+ * Domain notes, after the audit — the audit's own wizard (app/audit/)
+ * writes one per domain during onboarding only; this is the ordinary,
+ * ongoing version, open any time, any domain, any number of notes
+ * (lib/notes.ts's recordNote is the same write either way).
  *
- * design-revision-v2.md §7.3: a Mark is a record — Edit and Remove on
+ * design-revision-v2.md §7.3: a note is a record — Edit and Remove on
  * every listed one, Remove always a void. `withdrawn=1` is the "show
  * withdrawn" toggle; `edit=<id>` opens that row's inline edit form.
  *
- * Reads live DB state (the recent-Marks list) on every load — see
+ * Reads live DB state (the recent-notes list) on every load — see
  * app/(loop)/page.tsx's comment on the same line for why a raw `pg` query
  * doesn't trip Next's static/dynamic analysis on its own.
  */
 export const dynamic = "force-dynamic";
 
-export default async function MarksPage({
+export default async function NotesPage({
   searchParams,
 }: {
   searchParams: Promise<{ withdrawn?: string; edit?: string }>;
@@ -29,16 +30,16 @@ export default async function MarksPage({
   const showWithdrawn = params.withdrawn === "1";
   const editingId = params.edit ?? null;
 
-  const recent = await withReadTransaction((client) => listRecentMarks(client, 10, showWithdrawn));
+  const recent = await withReadTransaction((client) => listRecentNotes(client, 10, showWithdrawn));
 
   return (
     <main className="mx-auto max-w-md px-6 py-12 text-ink">
       <BackLink href="/character-sheet" label="Character Sheet" />
       <SystemVoice as="div" size="sm" className="text-ink-faint mb-8">
-        Marks
+        Notes
       </SystemVoice>
 
-      <form action={submitMark} className="space-y-4 border border-border p-4">
+      <form action={submitNote} className="space-y-4 border border-border p-4">
         <label className="block space-y-2">
           <SystemVoice size="sm">Domain</SystemVoice>
           <select name="domain" required className="w-full rounded border border-border bg-surface p-2 font-sans text-ink">
@@ -50,46 +51,33 @@ export default async function MarksPage({
           </select>
         </label>
         <label className="block space-y-2">
-          <SystemVoice size="sm">What changed because of this?</SystemVoice>
+          <SystemVoice size="sm">Note</SystemVoice>
           <textarea name="note" required rows={3} className="w-full rounded border border-border bg-surface p-3 font-sans text-ink" />
         </label>
-        <label className="block space-y-2">
-          <SystemVoice size="sm">Artifact (optional)</SystemVoice>
-          <input type="text" name="artifact" className="w-full rounded border border-border bg-surface p-2 font-sans text-ink" />
-        </label>
         <button type="submit" className="border border-accent-dim px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-accent">
-          Add Mark
+          Add Note
         </button>
       </form>
 
       {recent.length > 0 && (
         <ul className="mt-8 space-y-3">
-          {recent.map((mark) =>
-            editingId === mark.id ? (
-              <li key={mark.id} className="border border-border p-3">
-                <form action={submitEditMark} className="space-y-3">
-                  <input type="hidden" name="markEventId" value={mark.id} />
+          {recent.map((note) =>
+            editingId === note.id ? (
+              <li key={note.id} className="border border-border p-3">
+                <form action={submitEditNote} className="space-y-3">
+                  <input type="hidden" name="noteEventId" value={note.id} />
                   <label className="block space-y-2">
                     <SystemVoice size="sm">Domain</SystemVoice>
-                    <p className="font-sans text-ink-faint text-sm">{mark.domain}</p>
+                    <p className="font-sans text-ink-faint text-sm">{note.domain}</p>
                   </label>
                   <label className="block space-y-2">
-                    <SystemVoice size="sm">What changed because of this?</SystemVoice>
+                    <SystemVoice size="sm">Note</SystemVoice>
                     <textarea
                       name="note"
                       required
                       rows={3}
-                      defaultValue={mark.note}
+                      defaultValue={note.note}
                       className="w-full rounded border border-border bg-surface p-3 font-sans text-ink"
-                    />
-                  </label>
-                  <label className="block space-y-2">
-                    <SystemVoice size="sm">Artifact (optional)</SystemVoice>
-                    <input
-                      type="text"
-                      name="artifact"
-                      defaultValue={mark.artifact ?? ""}
-                      className="w-full rounded border border-border bg-surface p-2 font-sans text-ink"
                     />
                   </label>
                   <div className="flex gap-3">
@@ -97,7 +85,7 @@ export default async function MarksPage({
                       Save
                     </button>
                     <a
-                      href={showWithdrawn ? "/marks?withdrawn=1" : "/marks"}
+                      href={showWithdrawn ? "/notes?withdrawn=1" : "/notes"}
                       className="text-ink-faint font-mono text-xs uppercase tracking-wide2"
                     >
                       Cancel
@@ -106,26 +94,26 @@ export default async function MarksPage({
                 </form>
               </li>
             ) : (
-              <li key={mark.id} className="border-b border-border py-2">
+              <li key={note.id} className="border-b border-border py-2">
                 <div className="flex items-start justify-between gap-4">
                   <p className="font-sans text-ink">
-                    {mark.note}
+                    {note.note}
                     <span className="text-ink-faint text-sm">
                       {" "}
-                      ({mark.domain}, {mark.logicalDay}
-                      {mark.voided ? ", withdrawn" : ""})
+                      ({note.domain}, {note.logicalDay}
+                      {note.voided ? ", withdrawn" : ""})
                     </span>
                   </p>
-                  {!mark.voided && (
+                  {!note.voided && (
                     <div className="flex shrink-0 gap-3">
                       <a
-                        href={`/marks?edit=${mark.id}${showWithdrawn ? "&withdrawn=1" : ""}`}
+                        href={`/notes?edit=${note.id}${showWithdrawn ? "&withdrawn=1" : ""}`}
                         className="text-ink-faint font-mono text-xs uppercase tracking-wide2"
                       >
                         Edit
                       </a>
-                      <form action={submitVoidMark}>
-                        <input type="hidden" name="markEventId" value={mark.id} />
+                      <form action={submitVoidNote}>
+                        <input type="hidden" name="noteEventId" value={note.id} />
                         <button type="submit" className="text-ink-faint font-mono text-xs uppercase tracking-wide2">
                           Remove
                         </button>
@@ -140,7 +128,7 @@ export default async function MarksPage({
       )}
 
       <a
-        href={showWithdrawn ? "/marks" : "/marks?withdrawn=1"}
+        href={showWithdrawn ? "/notes" : "/notes?withdrawn=1"}
         className="text-ink-faint mt-6 block font-mono text-xs uppercase tracking-wide2"
       >
         {showWithdrawn ? "Hide withdrawn" : "Show withdrawn"}

@@ -6,7 +6,8 @@
  * structurally by lib/xp.ts never reading this type at all.
  */
 import type { Pool, PoolClient } from "pg";
-import { appendEvent, type AppendedEvent } from "./events";
+import { appendCorrection, appendEvent, type AppendedEvent } from "./events";
+import { fetchRawEventRows, resolveEffectiveEvents } from "./effective-events";
 import { getTimezone } from "./logical-day";
 import type { Domain } from "./domains";
 
@@ -31,12 +32,14 @@ export async function recordMetric(client: Queryable, input: RecordMetricInput):
   });
 }
 
-/** Total count of metric.recorded events ever written, corrections included (each still counts once). */
+/**
+ * Count of metric.recorded events, corrections applied, voided ones
+ * excluded (design-revision-v2.md §7.2 — "counts on the character sheet";
+ * this feeds the audit's own progress display the same way).
+ */
 export async function countMetrics(client: Queryable): Promise<number> {
-  const result = await client.query<{ count: number }>(
-    `SELECT count(*)::int AS count FROM events WHERE type = 'metric.recorded'`
-  );
-  return result.rows[0]?.count ?? 0;
+  const rows = await fetchRawEventRows(client);
+  return resolveEffectiveEvents(rows).filter((e) => e.type === "metric.recorded").length;
 }
 
 export interface RecentMetric {
@@ -46,26 +49,72 @@ export interface RecentMetric {
   value: number;
   unit: string;
   occurredAt: Date;
+  logicalDay: string;
+  voided: boolean;
 }
 
-/** Most recent metrics, newest first — for a simple confirmation list, not a full history view. */
-export async function listRecentMetrics(client: Queryable, limit = 10): Promise<RecentMetric[]> {
-  const result = await client.query<{
-    id: string;
-    domain: Domain | null;
-    payload: { metric: string; value: number; unit: string };
-    occurred_at: Date;
-  }>(
-    `SELECT id, domain, payload, occurred_at FROM events
-     WHERE type = 'metric.recorded' ORDER BY recorded_at DESC LIMIT $1`,
-    [limit]
-  );
-  return result.rows.map((row) => ({
-    id: row.id,
-    domain: row.domain,
-    metric: row.payload.metric,
-    value: row.payload.value,
-    unit: row.payload.unit,
-    occurredAt: row.occurred_at,
+/**
+ * Most recent metrics, newest first, corrections applied — for the
+ * /metrics list, not a full history view. `includeVoided` powers the
+ * "show withdrawn" toggle (design-revision-v2.md §7.3).
+ */
+export async function listRecentMetrics(
+  client: Queryable,
+  limit = 10,
+  includeVoided = false
+): Promise<RecentMetric[]> {
+  const rows = await fetchRawEventRows(client);
+  const metrics = resolveEffectiveEvents(rows, { includeVoided })
+    .filter((e) => e.type === "metric.recorded")
+    .sort((a, b) => b.occurredAt.getTime() - a.occurredAt.getTime())
+    .slice(0, limit);
+
+  return metrics.map((e) => ({
+    id: e.id,
+    domain: e.domain as Domain | null,
+    metric: typeof e.payload.metric === "string" ? e.payload.metric : "",
+    value: typeof e.payload.value === "number" ? e.payload.value : 0,
+    unit: typeof e.payload.unit === "string" ? e.payload.unit : "",
+    occurredAt: e.occurredAt,
+    logicalDay: e.logicalDay,
+    voided: e.payload.voided === true,
   }));
+}
+
+export interface EditMetricInput {
+  metricEventId: string;
+  metric?: string;
+  value?: number;
+  unit?: string;
+  timezone?: string;
+}
+
+/** Corrects a metric (design-revision-v2.md §7.1/§7.2) — a record, editable at any time, no same-day restriction. */
+export async function editMetric(client: Queryable, input: EditMetricInput): Promise<AppendedEvent> {
+  const payload: Record<string, unknown> = {};
+  if (input.metric !== undefined) payload.metric = input.metric;
+  if (input.value !== undefined) payload.value = input.value;
+  if (input.unit !== undefined) payload.unit = input.unit;
+
+  return appendCorrection(client, {
+    correctsType: "metric.recorded",
+    correctsEventId: input.metricEventId,
+    payload,
+    timezone: input.timezone,
+  });
+}
+
+export interface VoidMetricInput {
+  metricEventId: string;
+  timezone?: string;
+}
+
+/** Withdraws a metric (design-revision-v2.md §7.1/§7.2) — a record, voidable at any time. The original is never removed. */
+export async function voidMetric(client: Queryable, input: VoidMetricInput): Promise<AppendedEvent> {
+  return appendCorrection(client, {
+    correctsType: "metric.recorded",
+    correctsEventId: input.metricEventId,
+    payload: { voided: true },
+    timezone: input.timezone,
+  });
 }

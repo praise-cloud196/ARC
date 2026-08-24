@@ -13,6 +13,15 @@
  *   by editing history.
  * - Correction events themselves never appear in the result — they exist
  *   only to be folded into the original they reference.
+ * - An event whose effective payload has `voided: true`
+ *   (design-revision-v2.md §7.2) is dropped from the result entirely by
+ *   default — "a voided event contributes nothing anywhere
+ *   resolveEffectiveEvents is consumed." Pass `{ includeVoided: true }` to
+ *   see it anyway (still with `payload.voided` set); the only legitimate
+ *   reason is a "show withdrawn" management view (§7.3) — everything else
+ *   (XP, momentum, dormancy, rollups, the report, counts) wants the
+ *   default. The original row is never removed either way; this only
+ *   controls whether it appears in *this* fold's output.
  *
  * Split into `fetchRawEventRows` (the one DB round trip) and
  * `resolveEffectiveEvents` (a pure in-memory fold) since milestone-4-spec.md
@@ -22,7 +31,8 @@
  * once and run every computation over that same in-memory array, not issue
  * a fresh query per value. lib/xp.ts's `computeDomainLevel` needs the *raw*
  * rows (unfolded, in recorded_at order) rather than this module's folded
- * output — see its own comment for why — so both shapes are exported.
+ * output — see its own comment for why — so both shapes are exported, and
+ * it tracks voided-ness itself rather than going through this function.
  *
  * Shared by lib/rollup.ts, lib/xp.ts, lib/dormancy.ts, lib/marks.ts, and
  * lib/identity.ts (and anything else that needs "what actually happened,
@@ -44,7 +54,17 @@ export interface EffectiveEvent {
   occurredAt: Date;
   logicalDay: string;
   domain: string | null;
+  /** The original event's `subject_id` (which row it refers to, e.g. a commitment) — corrections never carry their own, so this always reflects the original's. */
+  subjectId: string | null;
   payload: Record<string, unknown>;
+}
+
+export interface ResolveEffectiveEventsOptions {
+  /**
+   * Include voided events in the result instead of dropping them (see this
+   * module's header comment). Default false.
+   */
+  includeVoided?: boolean;
 }
 
 export interface RawEventRow {
@@ -68,8 +88,11 @@ export async function fetchRawEventRows(client: Queryable): Promise<RawEventRow[
   return rows;
 }
 
-/** Pure — no I/O. Folds corrections into their originals; see this module's header comment for the rules. */
-export function resolveEffectiveEvents(rows: RawEventRow[]): EffectiveEvent[] {
+/** Pure — no I/O. Folds corrections into their originals; see this module's header comment for the rules, including `options.includeVoided`. */
+export function resolveEffectiveEvents(
+  rows: RawEventRow[],
+  options: ResolveEffectiveEventsOptions = {}
+): EffectiveEvent[] {
   // Latest correction per (original event id, type it corrects).
   const latestCorrection = new Map<string, RawEventRow>();
   const originals: RawEventRow[] = [];
@@ -87,7 +110,7 @@ export function resolveEffectiveEvents(rows: RawEventRow[]): EffectiveEvent[] {
     }
   }
 
-  return originals.map((original) => {
+  const resolved = originals.map((original) => {
     const correction = latestCorrection.get(`${original.id}:${original.type}`);
     const occurredAt = correction?.occurred_at ?? original.occurred_at;
     const timezone = correction?.timezone ?? original.timezone;
@@ -100,12 +123,19 @@ export function resolveEffectiveEvents(rows: RawEventRow[]): EffectiveEvent[] {
       occurredAt,
       logicalDay: computeLogicalDay(occurredAt, timezone),
       domain,
+      subjectId: original.subject_id,
       payload,
     };
   });
+
+  if (options.includeVoided) return resolved;
+  return resolved.filter((event) => event.payload.voided !== true);
 }
 
 /** Convenience for callers that only need one derived value: fetch and fold in one call. */
-export async function resolveEffectiveEventsFromDb(client: Queryable): Promise<EffectiveEvent[]> {
-  return resolveEffectiveEvents(await fetchRawEventRows(client));
+export async function resolveEffectiveEventsFromDb(
+  client: Queryable,
+  options?: ResolveEffectiveEventsOptions
+): Promise<EffectiveEvent[]> {
+  return resolveEffectiveEvents(await fetchRawEventRows(client), options);
 }

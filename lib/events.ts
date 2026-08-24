@@ -174,14 +174,26 @@ export async function appendEvent(client: Queryable, event: NewEvent): Promise<A
  * latest correction for a given event as superseding it
  * (milestone-1.1-fixes.md item 2).
  *
- * `occurredAt`, `domain`, and `timezone` default to the original event's own
- * values rather than to "now" / null: a correction is normally fixing a
- * value in `payload` (a wrong tier, a typo'd note), not relitigating when or
- * under which domain the thing happened. A caller correcting those too may
- * still override them explicitly. `payload` is shallow-merged over the
- * original's for the same reason — a correction only needs to name the
- * field it's fixing (`{ tier: 2 }`), not restate the whole object, or every
- * other field would silently vanish from the effective event.
+ * `occurredAt`, `domain`, and `timezone` default to the *current effective*
+ * values (the latest existing correction's, or the original's if there
+ * isn't one yet) rather than to "now" / null: a correction is normally
+ * fixing a value in `payload` (a wrong tier, a typo'd note), not
+ * relitigating when or under which domain the thing happened. A caller
+ * correcting those too may still override them explicitly. `payload` is
+ * shallow-merged over that same base for the same reason — a correction
+ * only needs to name the field it's fixing (`{ tier: 2 }`), not restate
+ * the whole object, or every other field would silently vanish from the
+ * effective event.
+ *
+ * Basing this on the *latest correction* rather than always the bare
+ * original matters once an event can be corrected more than once
+ * independently (resistance patched, then a note added later; a Mark
+ * edited after being voided, design-revision-v2.md §7): merging every new
+ * correction against the original alone would silently drop whatever an
+ * earlier correction added, since resolveEffectiveEvents only ever reads
+ * the *latest* one. Chaining against the latest existing correction keeps
+ * every field any prior correction set, including `payload.voided` — an
+ * edit to an already-voided record must not accidentally un-void it.
  */
 export async function appendCorrection(
   client: Queryable,
@@ -203,13 +215,26 @@ export async function appendCorrection(
     );
   }
 
+  const correctedType = `${correction.correctsType}.corrected` as EventType;
+  const latestExisting = await client.query<{
+    occurred_at: Date;
+    domain: string | null;
+    timezone: string;
+    payload: Record<string, unknown>;
+  }>(
+    `SELECT occurred_at, domain, timezone, payload FROM events
+     WHERE type = $1 AND subject_id = $2 ORDER BY recorded_at DESC LIMIT 1`,
+    [correctedType, correction.correctsEventId]
+  );
+  const baseRow = latestExisting.rows[0] ?? originalRow;
+
   return appendEvent(client, {
-    type: `${correction.correctsType}.corrected` as EventType,
-    occurredAt: correction.occurredAt ?? originalRow.occurred_at,
-    domain: correction.domain !== undefined ? correction.domain : originalRow.domain,
+    type: correctedType,
+    occurredAt: correction.occurredAt ?? baseRow.occurred_at,
+    domain: correction.domain !== undefined ? correction.domain : baseRow.domain,
     subjectId: correction.correctsEventId,
-    payload: { ...originalRow.payload, ...correction.payload },
+    payload: { ...baseRow.payload, ...correction.payload },
     idempotencyKey: correction.idempotencyKey,
-    timezone: correction.timezone ?? originalRow.timezone,
+    timezone: correction.timezone ?? baseRow.timezone,
   });
 }

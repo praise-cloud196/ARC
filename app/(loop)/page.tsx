@@ -83,12 +83,17 @@ export default async function TodayPage() {
     return weekCommitments.map((c) => {
       const originalId = originalIdByCommitmentId.get(c.id);
       const completion = originalId ? effectiveById.get(originalId) : undefined;
+      // A voided completion (design-revision-v2.md §7) reads as not
+      // completed — the row goes back to offering Complete, not stuck on
+      // Done. The original event id is still real (never removed), just
+      // not surfaced as "the current completion" here.
+      const voided = completion?.payload.voided === true;
       const resistance = completion?.payload.resistance;
       return {
         id: c.id,
         label: c.label,
-        completionEventId: originalId ?? null,
-        resistance: typeof resistance === "string" ? resistance : null,
+        completionEventId: voided ? null : (originalId ?? null),
+        resistance: voided || typeof resistance !== "string" ? null : resistance,
       };
     });
   });

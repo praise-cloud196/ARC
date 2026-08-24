@@ -17,6 +17,7 @@ import { addDays, daysBetweenInclusive, startOfWeek } from "./day-math";
 import { computeIdentity, type Identity } from "./identity";
 import { computeCurrentMomentum, getCommitmentsForWeek, type Commitment } from "./commitments";
 import type { MomentumResult } from "./momentum";
+import { resolveEffectiveEvents, type RawEventRow } from "./effective-events";
 import { selectClosingLine, type FactCommitment, type FactCompletion } from "./report-facts";
 import {
   computeNightlyReport,
@@ -160,6 +161,37 @@ function isXpTier(value: unknown): value is XpTier {
   return typeof value === "number" && value in XP_TIER_VALUES;
 }
 
+const RAW_EVENT_COLUMNS = "id, type, occurred_at, timezone, domain, subject_id, payload, recorded_at";
+
+/**
+ * Effective (corrections-applied, voided-excluded) events of `types` whose
+ * *original* falls within [dayStart, dayEnd] — a correction is picked up
+ * regardless of its own logical_day, since an edit or void written later
+ * (design-revision-v2.md §7.1: records are correctable/voidable any time)
+ * must still apply to an original that happened in this window. Narrower
+ * than fetchRawEventRows's full-log fetch, for a caller — the nightly
+ * report, the closing line — that only needs a bounded window.
+ */
+async function fetchEffectiveEventsForRange(
+  client: PoolClient,
+  dayStart: string,
+  dayEnd: string,
+  types: string[]
+) {
+  const originals = await client.query<RawEventRow>(
+    `SELECT ${RAW_EVENT_COLUMNS} FROM events WHERE logical_day >= $1 AND logical_day <= $2 AND type = ANY($3)`,
+    [dayStart, dayEnd, types]
+  );
+  const ids = originals.rows.map((r) => r.id);
+  const corrections = ids.length
+    ? await client.query<RawEventRow>(
+        `SELECT ${RAW_EVENT_COLUMNS} FROM events WHERE subject_id = ANY($1) AND type = ANY($2)`,
+        [ids, types.map((t) => `${t}.corrected`)]
+      )
+    : { rows: [] as RawEventRow[] };
+  return resolveEffectiveEvents([...originals.rows, ...corrections.rows]);
+}
+
 /** Assembles lib/report.ts's input from the DB for the current logical day. */
 export async function computeNightlyReportData(client: PoolClient, now: Date = new Date()): Promise<NightlyReportInput> {
   const timezone = getTimezone();
@@ -172,25 +204,28 @@ export async function computeNightlyReportData(client: PoolClient, now: Date = n
   const weekCommitments = await getCommitmentsForWeek(client, weekStart);
   const reportCommitments: ReportCommitment[] = weekCommitments.map((c) => ({ id: c.id, label: c.label }));
 
-  const todaysEvents = await client.query<{ type: string; subject_id: string | null; domain: string | null; payload: Record<string, unknown> }>(
-    `SELECT type, subject_id, domain, payload FROM events WHERE logical_day = $1`,
-    [today]
-  );
+  // Voided rows are already excluded by fetchEffectiveEventsForRange
+  // (design-revision-v2.md §7.2: "contributes nothing... to the report"),
+  // and an edited Mark's latest note is what shows, not a withdrawn typo.
+  const todaysEffective = await fetchEffectiveEventsForRange(client, today, today, [
+    "commitment.completed",
+    "mark.recorded",
+  ]);
 
   const completedTodayIds = new Set<string>();
   const xpEarnedToday: Record<string, number> = {};
   let mark: ReportMark | null = null;
 
-  for (const row of todaysEvents.rows) {
-    if (row.type === "commitment.completed" && row.subject_id) {
-      completedTodayIds.add(row.subject_id);
-      const tier = row.payload.tier;
-      if (row.domain && isXpTier(tier)) {
-        xpEarnedToday[row.domain] = (xpEarnedToday[row.domain] ?? 0) + XP_TIER_VALUES[tier];
+  for (const event of todaysEffective) {
+    if (event.type === "commitment.completed" && event.subjectId) {
+      completedTodayIds.add(event.subjectId);
+      const tier = event.payload.tier;
+      if (event.domain && isXpTier(tier)) {
+        xpEarnedToday[event.domain] = (xpEarnedToday[event.domain] ?? 0) + XP_TIER_VALUES[tier];
       }
     }
-    if (row.type === "mark.recorded") {
-      const note = row.payload.note;
+    if (event.type === "mark.recorded") {
+      const note = event.payload.note;
       if (typeof note === "string") mark = { note };
     }
   }
@@ -233,16 +268,17 @@ async function computeClosingLine(client: PoolClient, asOfDay: string): Promise<
     activeUntil: row.active_until,
   }));
 
-  const completionsResult = await client.query<{ commitment_id: string; domain: Domain; logical_day: string }>(
-    `SELECT subject_id AS commitment_id, domain, logical_day FROM events
-     WHERE type = 'commitment.completed' AND logical_day >= $1 AND logical_day <= $2`,
-    [horizon, asOfDay]
-  );
-  const completions: FactCompletion[] = completionsResult.rows.map((row) => ({
-    commitmentId: row.commitment_id,
-    domain: row.domain,
-    logicalDay: row.logical_day,
-  }));
+  // Excludes voided completions (design-revision-v2.md §7.2) — a fact rule
+  // (lib/report-facts.ts) must not read a withdrawn mis-tap as a real
+  // streak day.
+  const completionsEffective = await fetchEffectiveEventsForRange(client, horizon, asOfDay, ["commitment.completed"]);
+  const completions: FactCompletion[] = completionsEffective
+    .filter((e) => e.type === "commitment.completed" && e.subjectId !== null)
+    .map((e) => ({
+      commitmentId: e.subjectId as string,
+      domain: e.domain as Domain,
+      logicalDay: e.logicalDay,
+    }));
 
   return selectClosingLine({ commitments, completions, asOfDay });
 }

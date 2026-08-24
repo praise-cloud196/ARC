@@ -22,7 +22,14 @@ import type { Domain } from "./domains";
 // (lib/momentum.ts) which counts only positive conduct too.
 const DOMAIN_CONDUCT_EVENT_TYPES = new Set(["commitment.completed", "quest.step_completed", "mark.recorded"]);
 
-/** Pure — no I/O. See `lastConductLogicalDay` below. */
+/**
+ * Pure — no I/O. See `lastConductLogicalDay` below. `events` is expected
+ * to come from resolveEffectiveEvents's default (voided-excluding)
+ * behaviour (design-revision-v2.md §7.2, which names dormancy explicitly),
+ * so a voided completion or Mark never reaches this loop — a mistake
+ * shouldn't reset a domain's dormancy clock any more than it should earn
+ * XP.
+ */
 export function lastConductLogicalDayFromEvents(events: EffectiveEvent[], domain: Domain): string | null {
   let latest: string | null = null;
   for (const event of events) {
