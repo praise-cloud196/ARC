@@ -4,6 +4,7 @@ import { computeProposedStartingRank } from "@/lib/rank";
 import { DOMAINS } from "@/lib/domains";
 import { AUDIT_MIN_RETROACTIVE_MARKS } from "@/lib/calibration";
 import { RANKS } from "@/lib/calibration";
+import { BackLink } from "@/app/components/BackLink";
 import { SystemVoice } from "@/app/components/SystemVoice";
 import {
   continueFromMarks,
@@ -42,9 +43,12 @@ async function resumeStep(): Promise<Step> {
 
 function StepNav({ current }: { current: Step }) {
   return (
-    <SystemVoice as="div" size="sm" className="text-ink-faint mb-8">
-      Step {STEP_ORDER.indexOf(current) + 1} of {STEP_ORDER.length} — Baseline Audit
-    </SystemVoice>
+    <>
+      <BackLink href="/" label="Today" />
+      <SystemVoice as="div" size="sm" className="text-ink-faint mb-8">
+        Step {STEP_ORDER.indexOf(current) + 1} of {STEP_ORDER.length} — Baseline Audit
+      </SystemVoice>
+    </>
   );
 }
 

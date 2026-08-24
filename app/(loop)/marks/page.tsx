@@ -1,6 +1,7 @@
 import { withReadTransaction } from "@/lib/with-transaction";
 import { listRecentMarks } from "@/lib/marks";
 import { DOMAINS } from "@/lib/domains";
+import { BackLink } from "@/app/components/BackLink";
 import { SystemVoice } from "@/app/components/SystemVoice";
 import { submitMark } from "./actions";
 
@@ -20,6 +21,7 @@ export default async function MarksPage() {
 
   return (
     <main className="mx-auto max-w-md px-6 py-12 text-ink">
+      <BackLink href="/character-sheet" label="Character Sheet" />
       <SystemVoice as="div" size="sm" className="text-ink-faint mb-8">
         Marks
       </SystemVoice>

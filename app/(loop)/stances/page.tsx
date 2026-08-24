@@ -1,5 +1,6 @@
 import { withReadTransaction } from "@/lib/with-transaction";
 import { getAllStancesForManagement, isWithinSeasonBoundary } from "@/lib/stances";
+import { BackLink } from "@/app/components/BackLink";
 import { SystemVoice } from "@/app/components/SystemVoice";
 import { submitStance } from "./actions";
 
@@ -37,6 +38,7 @@ export default async function StancesPage({
 
   return (
     <main className="mx-auto max-w-md px-6 py-12 text-ink">
+      <BackLink href="/character-sheet" label="Character Sheet" />
       <SystemVoice as="div" size="sm" className="text-ink-faint mb-8">
         Stances
       </SystemVoice>

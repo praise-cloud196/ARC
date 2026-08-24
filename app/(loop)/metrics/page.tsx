@@ -1,6 +1,7 @@
 import { withReadTransaction } from "@/lib/with-transaction";
 import { listRecentMetrics } from "@/lib/metrics";
 import { DOMAINS } from "@/lib/domains";
+import { BackLink } from "@/app/components/BackLink";
 import { SystemVoice } from "@/app/components/SystemVoice";
 import { submitMetric } from "./actions";
 
@@ -20,6 +21,7 @@ export default async function MetricsPage() {
 
   return (
     <main className="mx-auto max-w-md px-6 py-12 text-ink">
+      <BackLink href="/character-sheet" label="Character Sheet" />
       <SystemVoice as="div" size="sm" className="text-ink-faint mb-8">
         Metrics
       </SystemVoice>
