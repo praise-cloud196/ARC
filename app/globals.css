@@ -22,22 +22,61 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* The one motion this product uses: a slow fade for a state change. Nothing bounces, nothing pulses. */
-.fade-in {
-  animation: fade-in 400ms ease-out;
+/* The only motion this product uses (docs/design-revision-v1.md §5): a
+   system panel's arrival. Fires once per real DOM mount — no client JS
+   needed, since a fresh mount is a fresh element and the keyframe simply
+   runs. `forwards` keeps the end state; without it the browser reverts to
+   pre-animation styles the instant the animation completes. */
+.panel-arrive {
+  animation: panel-arrive 240ms ease-out forwards;
 }
 
-@keyframes fade-in {
+@keyframes panel-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* The header sweep: a 1px accent line, left to right, once, then gone. */
+.panel-sweep {
+  animation: panel-sweep 320ms ease-out forwards;
+}
+
+@keyframes panel-sweep {
+  0% {
+    transform: scaleX(0);
+    opacity: 1;
+  }
+  70% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-arrive {
+    animation: panel-arrive-reduced 120ms ease-out forwards;
+  }
+  .panel-sweep {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+@keyframes panel-arrive-reduced {
   from {
     opacity: 0;
   }
   to {
     opacity: 1;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .fade-in {
-    animation: none;
   }
 }

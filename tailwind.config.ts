@@ -1,27 +1,31 @@
 import type { Config } from "tailwindcss";
 
-// Design language (milestone-4-spec.md §2): dark, near-black ground with a
-// cool cast; one accent colour used sparingly; monospace/uppercase for the
-// system's own voice, humanist sans for what the user enters. No red
-// anywhere in this product — there is deliberately no "danger"/"error"
+// Design language (docs/design-revision-v1.md §2, superseding
+// milestone-4-spec.md §2's palette): dark, near-black ground with a cool
+// cast; one accent colour used sparingly — cool steel blue, not gold, so it
+// reads as *system* rather than *achievement badge*; monospace/uppercase
+// for the system's own voice, humanist sans for what the user enters. No
+// red anywhere in this product — there is deliberately no "danger"/"error"
 // color token here at all, so one can't get introduced by habit later.
 const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./lib/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
-        ground: "#0b0e14",
-        surface: "#12161f",
-        border: "rgba(230, 233, 240, 0.08)",
+        ground: "#0A0C10",
+        surface: "#0E1117",
+        panel: "#0E1117",
+        border: "#1C2230",
         ink: {
-          DEFAULT: "rgba(230, 233, 240, 0.92)",
-          muted: "rgba(230, 233, 240, 0.58)",
-          faint: "rgba(230, 233, 240, 0.34)",
+          DEFAULT: "#E6E9EF",
+          muted: "rgba(230, 233, 239, 0.6)",
+          faint: "#7A828F",
         },
         accent: {
-          DEFAULT: "#c2a26b",
-          dim: "rgba(194, 162, 107, 0.55)",
-          faint: "rgba(194, 162, 107, 0.16)",
+          DEFAULT: "#6C9DC6",
+          bright: "#8FD3E8",
+          dim: "rgba(108, 157, 198, 0.55)",
+          faint: "rgba(108, 157, 198, 0.16)",
         },
       },
       fontFamily: {

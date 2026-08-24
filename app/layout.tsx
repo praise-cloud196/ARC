@@ -35,7 +35,7 @@ export const metadata: Metadata = {
 // declares installability metadata only. No push permission is ever
 // requested anywhere in this product.
 export const viewport: Viewport = {
-  themeColor: "#0b0e14",
+  themeColor: "#0A0C10",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",

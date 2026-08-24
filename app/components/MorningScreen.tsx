@@ -1,10 +1,13 @@
+import { Panel } from "./Panel";
 import { SystemVoice } from "./SystemVoice";
 import type { MorningScreenData } from "@/lib/loop";
 
 /**
  * Morning (milestone-4-spec.md §5, PRD §12.1) — the emotional surface, full
  * visual investment. Rank, momentum state, season and day number, active
- * main quest, today's commitments. Nothing else.
+ * main quest, today's commitments. Nothing else. Rendered inside a System
+ * panel (docs/design-revision-v1.md §7) — this screen gets the most
+ * attention of anything in the product.
  *
  * The no-commitment day copy is specified verbatim (milestone-4-spec.md
  * §5) — rendered exactly, not paraphrased:
@@ -30,44 +33,44 @@ export function MorningScreen({ data }: { data: MorningScreenData }) {
       : "BEFORE SEASON 01";
 
   return (
-    <div className="fade-in flex min-h-screen flex-col items-center justify-center px-6 py-16 text-center">
-      <SystemVoice as="div" size="lg" className="text-accent">
-        Rank {identity.rank}
-      </SystemVoice>
+    <div className="flex min-h-screen flex-col items-center justify-center px-6 py-16">
+      <Panel
+        header={
+          <div className="text-ink-faint text-center font-mono text-[10px] uppercase tracking-[0.2em]">
+            {dayLine}
+          </div>
+        }
+      >
+        <div className="space-y-3 text-center">
+          <div className="text-accent font-mono text-[30px] uppercase tracking-[0.08em]">Rank {identity.rank}</div>
 
-      <div className="mt-14 max-w-md space-y-3">
-        <SystemVoice as="div" size="sm" className="text-ink-faint">
-          {dayLine}
-        </SystemVoice>
+          {hasCommitments ? (
+            <ul className="space-y-1 py-2">
+              {todaysCommitments.map((c) => (
+                <li key={c.id} className="font-sans text-ink text-[15px]">
+                  {c.label}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <SystemVoice as="div" size="base" className="text-ink py-2">
+              No commitments today.
+            </SystemVoice>
+          )}
 
-        {hasCommitments ? (
-          <ul className="space-y-1 py-2">
-            {todaysCommitments.map((c) => (
-              <li key={c.id} className="font-sans text-ink text-lg">
-                {c.label}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <SystemVoice as="div" size="base" className="text-ink py-2">
-            No commitments today.
-          </SystemVoice>
-        )}
+          {mainQuest && (
+            <SystemVoice as="div" size="base" className="text-ink-muted">
+              Main Quest — <span className="font-sans normal-case tracking-normal text-ink">{mainQuest}</span>
+            </SystemVoice>
+          )}
 
-        {mainQuest && (
           <SystemVoice as="div" size="base" className="text-ink-muted">
-            Main Quest — <span className="font-sans normal-case tracking-normal text-ink">{mainQuest}</span>
+            Momentum: {momentum.state}
           </SystemVoice>
-        )}
 
-        <SystemVoice as="div" size="base" className="text-ink-muted">
-          Momentum: {momentum.state}
-        </SystemVoice>
-      </div>
-
-      {!hasCommitments && (
-        <p className="font-sans text-ink-muted mt-10 text-base">Nothing is required of you today.</p>
-      )}
+          {!hasCommitments && <p className="font-sans text-ink-muted mt-4 text-[14px]">Nothing is required of you today.</p>}
+        </div>
+      </Panel>
     </div>
   );
 }
