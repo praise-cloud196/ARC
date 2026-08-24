@@ -4,7 +4,7 @@ import { computeProposedStartingRank } from "@/lib/rank";
 import { DOMAINS } from "@/lib/domains";
 import { AUDIT_MIN_RETROACTIVE_MARKS } from "@/lib/calibration";
 import { RANKS } from "@/lib/calibration";
-import { BackLink } from "@/app/components/BackLink";
+import { Panel } from "@/app/components/Panel";
 import { SystemVoice } from "@/app/components/SystemVoice";
 import {
   continueFromMarks,
@@ -44,7 +44,9 @@ async function resumeStep(): Promise<Step> {
 function StepNav({ current }: { current: Step }) {
   return (
     <>
-      <BackLink href="/" label="Today" realNav />
+      <a href="/" className="ia-link mb-8 block font-mono text-xs uppercase tracking-wide2">
+        Today
+      </a>
       <SystemVoice as="div" size="sm" className="text-ink-faint mb-8">
         Step {STEP_ORDER.indexOf(current) + 1} of {STEP_ORDER.length} — Baseline Audit
       </SystemVoice>
@@ -52,6 +54,11 @@ function StepNav({ current }: { current: Step }) {
   );
 }
 
+/**
+ * design-revision-v2.md §1: sits in a Panel like every other screen now
+ * ("audit steps" is explicit in §1's list). Not gridded — §2's applies-to
+ * list doesn't mention audit, and these are forms, not collections.
+ */
 export default async function AuditPage({
   searchParams,
 }: {
@@ -61,16 +68,20 @@ export default async function AuditPage({
   const step = (params.step as Step) ?? (await resumeStep());
 
   return (
-    <main className="mx-auto max-w-xl px-6 py-12 text-ink">
-      <StepNav current={step} />
+    <main className="px-6 py-12">
+      <Panel size="wide" header={<div className="text-ink-faint text-center font-mono text-[10px] uppercase tracking-[0.2em]">Baseline Audit</div>}>
+        <div className="max-w-xl">
+          <StepNav current={step} />
 
-      {step === "domains" && <DomainsStep />}
-      {step === "marks" && <MarksStep />}
-      {step === "metrics" && <MetricsStep />}
-      {step === "stances" && <StancesStep />}
-      {step === "outcomes" && <OutcomesStep />}
-      {step === "season" && <SeasonStep />}
-      {step === "rank" && <RankStep />}
+          {step === "domains" && <DomainsStep />}
+          {step === "marks" && <MarksStep />}
+          {step === "metrics" && <MetricsStep />}
+          {step === "stances" && <StancesStep />}
+          {step === "outcomes" && <OutcomesStep />}
+          {step === "season" && <SeasonStep />}
+          {step === "rank" && <RankStep />}
+        </div>
+      </Panel>
     </main>
   );
 }
@@ -87,11 +98,11 @@ function DomainsStep() {
             name={`note-${domain}`}
             required
             rows={3}
-            className="w-full rounded border border-border bg-surface p-3 font-sans text-ink"
+            className="ia w-full rounded border border-border bg-surface p-3 font-sans text-ink"
           />
         </label>
       ))}
-      <button type="submit" className="border border-accent-dim px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-accent">
+      <button type="submit" className="ia border border-accent-dim px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-accent">
         Continue
       </button>
     </form>
@@ -118,7 +129,7 @@ async function MarksStep() {
       <form action={submitRetroactiveMark} className="space-y-4 border border-border p-4">
         <label className="block space-y-2">
           <SystemVoice size="sm">Domain</SystemVoice>
-          <select name="domain" required className="w-full rounded border border-border bg-surface p-2 font-sans text-ink">
+          <select name="domain" required className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink">
             <option value="career">Career</option>
             <option value="body">Body</option>
             <option value="attention">Attention</option>
@@ -126,17 +137,17 @@ async function MarksStep() {
         </label>
         <label className="block space-y-2">
           <SystemVoice size="sm">When it happened</SystemVoice>
-          <input type="date" name="occurredAt" required className="w-full rounded border border-border bg-surface p-2 font-sans text-ink" />
+          <input type="date" name="occurredAt" required className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink" />
         </label>
         <label className="block space-y-2">
           <SystemVoice size="sm">What changed because of this?</SystemVoice>
-          <textarea name="note" required rows={2} className="w-full rounded border border-border bg-surface p-3 font-sans text-ink" />
+          <textarea name="note" required rows={2} className="ia w-full rounded border border-border bg-surface p-3 font-sans text-ink" />
         </label>
         <label className="block space-y-2">
           <SystemVoice size="sm">Artifact (optional)</SystemVoice>
-          <input type="text" name="artifact" className="w-full rounded border border-border bg-surface p-2 font-sans text-ink" />
+          <input type="text" name="artifact" className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink" />
         </label>
-        <button type="submit" className="border border-border px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-ink">
+        <button type="submit" className="ia border border-border px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-ink">
           Add Mark
         </button>
       </form>
@@ -145,7 +156,7 @@ async function MarksStep() {
         <button
           type="submit"
           disabled={!met}
-          className="border border-accent-dim px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-accent disabled:opacity-30"
+          className="ia border border-accent-dim px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-accent"
         >
           Continue
         </button>
@@ -175,23 +186,23 @@ async function MetricsStep() {
       <form action={submitMetric} className="space-y-4 border border-border p-4">
         <label className="block space-y-2">
           <SystemVoice size="sm">Metric</SystemVoice>
-          <input type="text" name="metric" required placeholder="e.g. weight" className="w-full rounded border border-border bg-surface p-2 font-sans text-ink" />
+          <input type="text" name="metric" required placeholder="e.g. weight" className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink" />
         </label>
         <label className="block space-y-2">
           <SystemVoice size="sm">Value</SystemVoice>
-          <input type="number" step="any" name="value" required className="w-full rounded border border-border bg-surface p-2 font-sans text-ink" />
+          <input type="number" step="any" name="value" required className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink" />
         </label>
         <label className="block space-y-2">
           <SystemVoice size="sm">Unit</SystemVoice>
-          <input type="text" name="unit" required placeholder="e.g. kg" className="w-full rounded border border-border bg-surface p-2 font-sans text-ink" />
+          <input type="text" name="unit" required placeholder="e.g. kg" className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink" />
         </label>
-        <button type="submit" className="border border-border px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-ink">
+        <button type="submit" className="ia border border-border px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-ink">
           Add Metric
         </button>
       </form>
 
       <form action={continueFromMetrics}>
-        <button type="submit" className="border border-accent-dim px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-accent">
+        <button type="submit" className="ia border border-accent-dim px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-accent">
           Continue
         </button>
       </form>
@@ -217,24 +228,24 @@ async function StancesStep() {
       <form action={submitStance} className="space-y-4 border border-border p-4">
         <label className="block space-y-2">
           <SystemVoice size="sm">Behaviour</SystemVoice>
-          <input type="text" name="behaviour" required className="w-full rounded border border-border bg-surface p-2 font-sans text-ink" />
+          <input type="text" name="behaviour" required className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink" />
         </label>
         <label className="block space-y-2">
           <SystemVoice size="sm">Stance</SystemVoice>
-          <select name="stance" required className="w-full rounded border border-border bg-surface p-2 font-sans text-ink">
+          <select name="stance" required className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink">
             <option value="observing">Observing</option>
             <option value="reducing">Reducing</option>
             <option value="abstaining">Abstaining</option>
             <option value="not_now">Not now</option>
           </select>
         </label>
-        <button type="submit" className="border border-border px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-ink">
+        <button type="submit" className="ia border border-border px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-ink">
           Add Stance
         </button>
       </form>
 
       <form action={continueFromStances}>
-        <button type="submit" className="border border-accent-dim px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-accent">
+        <button type="submit" className="ia border border-accent-dim px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-accent">
           Continue
         </button>
       </form>
@@ -252,10 +263,10 @@ function OutcomesStep() {
       {[1, 2, 3].map((n) => (
         <label key={n} className="block space-y-2">
           <SystemVoice size="sm">Statement {n}</SystemVoice>
-          <textarea name={`statement-${n}`} required rows={2} className="w-full rounded border border-border bg-surface p-3 font-sans text-ink" />
+          <textarea name={`statement-${n}`} required rows={2} className="ia w-full rounded border border-border bg-surface p-3 font-sans text-ink" />
         </label>
       ))}
-      <button type="submit" className="border border-accent-dim px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-accent">
+      <button type="submit" className="ia border border-accent-dim px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-accent">
         Continue
       </button>
     </form>
@@ -269,7 +280,7 @@ function SeasonStep() {
         <h1 className="font-sans text-xl">Season 01</h1>
         <p className="text-ink-muted text-sm">Opening the record.</p>
       </div>
-      <button type="submit" className="border border-accent-dim px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-accent">
+      <button type="submit" className="ia border border-accent-dim px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-accent">
         Open Season 01
       </button>
     </form>
@@ -292,7 +303,7 @@ async function RankStep() {
       </div>
       <label className="block space-y-2">
         <SystemVoice size="sm">Starting rank</SystemVoice>
-        <select name="startingRank" defaultValue={proposal.rank} className="w-full rounded border border-border bg-surface p-2 font-sans text-ink">
+        <select name="startingRank" defaultValue={proposal.rank} className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink">
           {eligibleRanks.map((rank) => (
             <option key={rank} value={rank}>
               {rank}
@@ -300,7 +311,7 @@ async function RankStep() {
           ))}
         </select>
       </label>
-      <button type="submit" className="border border-accent-dim px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-accent">
+      <button type="submit" className="ia border border-accent-dim px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-accent">
         Complete Audit
       </button>
     </form>

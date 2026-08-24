@@ -13,7 +13,7 @@ import { SystemVoice } from "./SystemVoice";
 export function NightScreen({ lines }: { lines: string[] }) {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-6 py-16">
-      <Panel header={<BracketedAnnouncement>System Report</BracketedAnnouncement>}>
+      <Panel ambient header={<BracketedAnnouncement>System Report</BracketedAnnouncement>}>
         <div className="space-y-3 text-center">
           {lines.map((line, i) => (
             <SystemVoice

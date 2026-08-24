@@ -92,12 +92,14 @@ body {
    this mechanism, which two isolated tests proved *does* fire for a real
    (hard) navigation regardless of force-dynamic.
 
-   `navigation: auto` opts every same-origin hard navigation in. Nav.tsx
-   and BackLink.tsx decide *which* links are real `<a>` navigations
-   (only ones touching the panel route) versus Next's normal fast
-   `<Link>` soft nav (everywhere else — no transition fires for those,
-   which is exactly right: §5b applies to navigation involving a panel,
-   not "anything within a screen").
+   `navigation: auto` opts every same-origin hard navigation in. Every
+   screen now sits in a Panel (design-revision-v2.md §1), and §6 asks for
+   this transition on every one of them, every navigation — so every
+   internal link in the product (Nav.tsx, BackLink.tsx, and every plain
+   `<a>` elsewhere) is a real navigation now, not `next/link`'s soft nav,
+   which never triggers this. A form submission that redirects back to
+   the same screen it started on gets the same treatment as any other
+   navigation — no special-casing to suppress it.
 
    Panel.tsx tags itself `view-transition-name: panel-transition` so only
    the panel itself dismisses/arrives; root (Nav, ground) is suppressed
@@ -158,5 +160,153 @@ body {
   ::view-transition-new(panel-transition) {
     animation-duration: 0s !important;
     animation-delay: 0s !important;
+  }
+}
+
+/* Interaction states (design-revision-v2.md §3): every interactive
+   element gets rest/hover/focus-visible/active/disabled. Rest is
+   whatever the element's own classes already say — these two shapes only
+   add the other three, so they compose with a button's own
+   primary/secondary colouring instead of replacing it.
+
+   .ia — elements with their own border (buttons, inputs, selects): hover
+   and active move the border colour, per spec.
+   .ia-link — plain text links with no border to move: only the text
+   colour changes.
+
+   Both always define focus-visible with a real outline — never
+   `outline: none` anywhere in this file, on principle (§3: "never
+   removed"). */
+.ia,
+.ia-link {
+  transition-property: color, border-color;
+  transition-duration: 120ms;
+  transition-timing-function: ease-out;
+}
+.ia:hover:not(:disabled) {
+  border-color: theme("colors.accent.dim");
+  color: theme("colors.ink.DEFAULT");
+}
+.ia:active:not(:disabled) {
+  border-color: theme("colors.accent.DEFAULT");
+  transition-duration: 60ms;
+}
+.ia:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.ia-link:hover {
+  color: theme("colors.ink.DEFAULT");
+}
+.ia-link:active {
+  color: theme("colors.ink.DEFAULT");
+  transition-duration: 60ms;
+}
+.ia:focus-visible,
+.ia-link:focus-visible {
+  outline: 1px solid theme("colors.accent.DEFAULT");
+  outline-offset: 2px;
+}
+
+/* Reticle cursor (design-revision-v2.md §5): a crosshair, two 6px
+   strokes with a 4px gap at centre, 1px weight — thickens to 1.5px over
+   interactive elements. Desktop only (`pointer: fine` is the nearest
+   reliable proxy for "has a real cursor"); touch devices get the
+   platform default, untouched. Pure CSS `cursor: url(svg)` — no JS, so
+   no lag or trail to read as broken. */
+@media (pointer: fine) {
+  body {
+    cursor:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cline x1='0' y1='8' x2='6' y2='8' stroke='%236C9DC6' stroke-width='1'/%3E%3Cline x1='10' y1='8' x2='16' y2='8' stroke='%236C9DC6' stroke-width='1'/%3E%3Cline x1='8' y1='0' x2='8' y2='6' stroke='%236C9DC6' stroke-width='1'/%3E%3Cline x1='8' y1='10' x2='8' y2='16' stroke='%236C9DC6' stroke-width='1'/%3E%3C/svg%3E")
+        8 8,
+      auto;
+  }
+  a,
+  button,
+  input,
+  select,
+  textarea,
+  [role="button"] {
+    cursor:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cline x1='0' y1='8' x2='6' y2='8' stroke='%236C9DC6' stroke-width='1.5'/%3E%3Cline x1='10' y1='8' x2='16' y2='8' stroke='%236C9DC6' stroke-width='1.5'/%3E%3Cline x1='8' y1='0' x2='8' y2='6' stroke='%236C9DC6' stroke-width='1.5'/%3E%3Cline x1='8' y1='10' x2='8' y2='16' stroke='%236C9DC6' stroke-width='1.5'/%3E%3C/svg%3E")
+        8 8,
+      pointer;
+  }
+  button:disabled,
+  input:disabled,
+  select:disabled {
+    cursor:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cline x1='0' y1='8' x2='6' y2='8' stroke='%236C9DC6' stroke-width='1'/%3E%3Cline x1='10' y1='8' x2='16' y2='8' stroke='%236C9DC6' stroke-width='1'/%3E%3Cline x1='8' y1='0' x2='8' y2='6' stroke='%236C9DC6' stroke-width='1'/%3E%3Cline x1='8' y1='10' x2='8' y2='16' stroke='%236C9DC6' stroke-width='1'/%3E%3C/svg%3E")
+        8 8,
+      not-allowed;
+  }
+}
+
+/* Ambient motion (design-revision-v2.md §4) — the three effects, all of
+   it, nothing more. All three are Loop-states-only (Panel's `ambient`
+   prop; MorningScreen also applies `.rank-drift` directly to the rank
+   glyph) — "everywhere else" panels (forms, lists) stay static, which is
+   also what keeps this consistent with §4's own "anything on a form
+   screen" prohibition rather than contradicting it. */
+.corner-breathe {
+  opacity: 0.4;
+  animation: corner-breathe 4s ease-in-out infinite;
+}
+@keyframes corner-breathe {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.panel-scanline {
+  animation: panel-scanline 20s linear infinite;
+}
+@keyframes panel-scanline {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  1% {
+    opacity: 0.08;
+  }
+  6% {
+    transform: translateX(100%);
+    opacity: 0.08;
+  }
+  6.5%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.rank-drift {
+  animation: rank-drift 6s ease-in-out infinite alternate;
+}
+@keyframes rank-drift {
+  from {
+    opacity: 0.92;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .corner-breathe {
+    animation: none;
+    opacity: 0.4;
+  }
+  .panel-scanline {
+    animation: none;
+    opacity: 0;
+  }
+  .rank-drift {
+    animation: none;
+    opacity: 1;
   }
 }

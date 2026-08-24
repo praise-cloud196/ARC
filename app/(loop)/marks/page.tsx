@@ -1,7 +1,8 @@
 import { withReadTransaction } from "@/lib/with-transaction";
 import { listRecentMarks } from "@/lib/marks";
 import { DOMAINS } from "@/lib/domains";
-import { BackLink } from "@/app/components/BackLink";
+import { Panel } from "@/app/components/Panel";
+import { Grid, GridCell } from "@/app/components/GridCell";
 import { SystemVoice } from "@/app/components/SystemVoice";
 import { submitMark, submitEditMark, submitVoidMark } from "./actions";
 
@@ -13,6 +14,7 @@ import { submitMark, submitEditMark, submitVoidMark } from "./actions";
  * design-revision-v2.md §7.3: a Mark is a record — Edit and Remove on
  * every listed one, Remove always a void. `withdrawn=1` is the "show
  * withdrawn" toggle; `edit=<id>` opens that row's inline edit form.
+ * §1/§2: sits in a Panel, the list is a grid of cells, not rows.
  *
  * Reads live DB state (the recent-Marks list) on every load — see
  * app/(loop)/page.tsx's comment on the same line for why a raw `pg` query
@@ -32,119 +34,115 @@ export default async function MarksPage({
   const recent = await withReadTransaction((client) => listRecentMarks(client, 10, showWithdrawn));
 
   return (
-    <main className="mx-auto max-w-md px-6 py-12 text-ink">
-      <BackLink href="/character-sheet" label="Character Sheet" />
-      <SystemVoice as="div" size="sm" className="text-ink-faint mb-8">
-        Marks
-      </SystemVoice>
+    <main className="px-6 py-12">
+      <Panel size="wide" header={<div className="text-ink-faint text-center font-mono text-[10px] uppercase tracking-[0.2em]">Marks</div>}>
+        <a href="/character-sheet" className="ia-link mb-8 block font-mono text-xs uppercase tracking-wide2">
+          Character Sheet
+        </a>
 
-      <form action={submitMark} className="space-y-4 border border-border p-4">
-        <label className="block space-y-2">
-          <SystemVoice size="sm">Domain</SystemVoice>
-          <select name="domain" required className="w-full rounded border border-border bg-surface p-2 font-sans text-ink">
-            {DOMAINS.map((domain) => (
-              <option key={domain} value={domain}>
-                {domain}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block space-y-2">
-          <SystemVoice size="sm">What changed because of this?</SystemVoice>
-          <textarea name="note" required rows={3} className="w-full rounded border border-border bg-surface p-3 font-sans text-ink" />
-        </label>
-        <label className="block space-y-2">
-          <SystemVoice size="sm">Artifact (optional)</SystemVoice>
-          <input type="text" name="artifact" className="w-full rounded border border-border bg-surface p-2 font-sans text-ink" />
-        </label>
-        <button type="submit" className="border border-accent-dim px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-accent">
-          Add Mark
-        </button>
-      </form>
+        <form action={submitMark} className="mb-8 max-w-md space-y-4 border border-border p-4">
+          <label className="block space-y-2">
+            <SystemVoice size="sm">Domain</SystemVoice>
+            <select name="domain" required className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink">
+              {DOMAINS.map((domain) => (
+                <option key={domain} value={domain}>
+                  {domain}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block space-y-2">
+            <SystemVoice size="sm">What changed because of this?</SystemVoice>
+            <textarea name="note" required rows={3} className="ia w-full rounded border border-border bg-surface p-3 font-sans text-ink" />
+          </label>
+          <label className="block space-y-2">
+            <SystemVoice size="sm">Artifact (optional)</SystemVoice>
+            <input type="text" name="artifact" className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink" />
+          </label>
+          <button type="submit" className="ia border border-accent-dim px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-accent">
+            Add Mark
+          </button>
+        </form>
 
-      {recent.length > 0 && (
-        <ul className="mt-8 space-y-3">
-          {recent.map((mark) =>
-            editingId === mark.id ? (
-              <li key={mark.id} className="border border-border p-3">
-                <form action={submitEditMark} className="space-y-3">
-                  <input type="hidden" name="markEventId" value={mark.id} />
-                  <label className="block space-y-2">
-                    <SystemVoice size="sm">Domain</SystemVoice>
-                    <p className="font-sans text-ink-faint text-sm">{mark.domain}</p>
-                  </label>
-                  <label className="block space-y-2">
-                    <SystemVoice size="sm">What changed because of this?</SystemVoice>
-                    <textarea
-                      name="note"
-                      required
-                      rows={3}
-                      defaultValue={mark.note}
-                      className="w-full rounded border border-border bg-surface p-3 font-sans text-ink"
-                    />
-                  </label>
-                  <label className="block space-y-2">
-                    <SystemVoice size="sm">Artifact (optional)</SystemVoice>
-                    <input
-                      type="text"
-                      name="artifact"
-                      defaultValue={mark.artifact ?? ""}
-                      className="w-full rounded border border-border bg-surface p-2 font-sans text-ink"
-                    />
-                  </label>
-                  <div className="flex gap-3">
-                    <button type="submit" className="border border-accent-dim px-3 py-1.5 font-mono text-xs uppercase tracking-wide2 text-accent">
-                      Save
-                    </button>
-                    <a
-                      href={showWithdrawn ? "/marks?withdrawn=1" : "/marks"}
-                      className="text-ink-faint font-mono text-xs uppercase tracking-wide2"
-                    >
-                      Cancel
-                    </a>
-                  </div>
-                </form>
-              </li>
-            ) : (
-              <li key={mark.id} className="border-b border-border py-2">
-                <div className="flex items-start justify-between gap-4">
-                  <p className="font-sans text-ink">
-                    {mark.note}
-                    <span className="text-ink-faint text-sm">
-                      {" "}
-                      ({mark.domain}, {mark.logicalDay}
-                      {mark.voided ? ", withdrawn" : ""})
-                    </span>
+        {recent.length > 0 && (
+          <Grid>
+            {recent.map((mark) =>
+              editingId === mark.id ? (
+                <GridCell key={mark.id}>
+                  <form action={submitEditMark} className="space-y-3">
+                    <input type="hidden" name="markEventId" value={mark.id} />
+                    <label className="block space-y-2">
+                      <SystemVoice size="sm">Domain</SystemVoice>
+                      <p className="font-sans text-ink-faint text-sm">{mark.domain}</p>
+                    </label>
+                    <label className="block space-y-2">
+                      <SystemVoice size="sm">What changed because of this?</SystemVoice>
+                      <textarea
+                        name="note"
+                        required
+                        rows={3}
+                        defaultValue={mark.note}
+                        className="ia w-full rounded border border-border bg-surface p-3 font-sans text-ink"
+                      />
+                    </label>
+                    <label className="block space-y-2">
+                      <SystemVoice size="sm">Artifact (optional)</SystemVoice>
+                      <input
+                        type="text"
+                        name="artifact"
+                        defaultValue={mark.artifact ?? ""}
+                        className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink"
+                      />
+                    </label>
+                    <div className="flex gap-3">
+                      <button type="submit" className="ia border border-accent-dim px-3 py-1.5 font-mono text-xs uppercase tracking-wide2 text-accent">
+                        Save
+                      </button>
+                      <a
+                        href={showWithdrawn ? "/marks?withdrawn=1" : "/marks"}
+                        className="ia-link font-mono text-xs uppercase tracking-wide2"
+                      >
+                        Cancel
+                      </a>
+                    </div>
+                  </form>
+                </GridCell>
+              ) : (
+                <GridCell key={mark.id}>
+                  <p className="font-sans text-ink">{mark.note}</p>
+                  <p className="text-ink-faint mt-1 font-mono text-xs">
+                    {mark.domain}, {mark.logicalDay}
+                    {mark.voided ? ", withdrawn" : ""}
                   </p>
                   {!mark.voided && (
-                    <div className="flex shrink-0 gap-3">
+                    <div className="mt-2 flex gap-3">
                       <a
                         href={`/marks?edit=${mark.id}${showWithdrawn ? "&withdrawn=1" : ""}`}
-                        className="text-ink-faint font-mono text-xs uppercase tracking-wide2"
+                        className="ia-link font-mono text-xs uppercase tracking-wide2"
                       >
                         Edit
                       </a>
                       <form action={submitVoidMark}>
                         <input type="hidden" name="markEventId" value={mark.id} />
-                        <button type="submit" className="text-ink-faint font-mono text-xs uppercase tracking-wide2">
+                        <button type="submit" className="ia-link font-mono text-xs uppercase tracking-wide2">
                           Remove
                         </button>
                       </form>
                     </div>
                   )}
-                </div>
-              </li>
-            )
-          )}
-        </ul>
-      )}
+                </GridCell>
+              )
+            )}
+          </Grid>
+        )}
 
-      <a
-        href={showWithdrawn ? "/marks" : "/marks?withdrawn=1"}
-        className="text-ink-faint mt-6 block font-mono text-xs uppercase tracking-wide2"
-      >
-        {showWithdrawn ? "Hide withdrawn" : "Show withdrawn"}
-      </a>
+        <a
+          href={showWithdrawn ? "/marks" : "/marks?withdrawn=1"}
+          className="ia-link mt-6 block font-mono text-xs uppercase tracking-wide2"
+        >
+          {showWithdrawn ? "Hide withdrawn" : "Show withdrawn"}
+        </a>
+      </Panel>
     </main>
   );
 }

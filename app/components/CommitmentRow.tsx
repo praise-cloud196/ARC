@@ -73,7 +73,7 @@ export function CommitmentRow({ commitment }: { commitment: CommitmentRowData })
             type="button"
             onClick={handleComplete}
             disabled={isPending}
-            className="border border-accent-dim px-3 py-1.5 font-mono text-xs uppercase tracking-wide2 text-accent disabled:opacity-40"
+            className="ia border border-accent-dim px-3 py-1.5 font-mono text-xs uppercase tracking-wide2 text-accent"
           >
             Complete
           </button>
@@ -86,7 +86,7 @@ export function CommitmentRow({ commitment }: { commitment: CommitmentRowData })
               type="button"
               onClick={handleUndo}
               disabled={isPending}
-              className="text-ink-faint font-mono text-xs uppercase tracking-wide2 disabled:opacity-40"
+              className="ia-link font-mono text-xs uppercase tracking-wide2"
             >
               Undo
             </button>
@@ -102,7 +102,7 @@ export function CommitmentRow({ commitment }: { commitment: CommitmentRowData })
               type="button"
               onClick={() => handleResistance(option.value)}
               disabled={isPending}
-              className="border border-border px-2 py-1 font-mono text-xs uppercase tracking-wide2 text-ink-muted disabled:opacity-40"
+              className="ia border border-border px-2 py-1 font-mono text-xs uppercase tracking-wide2 text-ink-muted"
             >
               {option.label}
             </button>
@@ -114,7 +114,7 @@ export function CommitmentRow({ commitment }: { commitment: CommitmentRowData })
         <button
           type="button"
           onClick={() => setShowNote(true)}
-          className="text-ink-faint mt-2 font-mono text-xs uppercase tracking-wide2"
+          className="ia-link text-ink-faint mt-2 font-mono text-xs uppercase tracking-wide2"
         >
           + Note
         </button>
@@ -126,7 +126,7 @@ export function CommitmentRow({ commitment }: { commitment: CommitmentRowData })
           autoFocus
           onBlur={(e) => handleNote(e.currentTarget.value)}
           placeholder="One line."
-          className="mt-2 w-full border-b border-border bg-transparent font-sans text-ink text-sm outline-none"
+          className="ia mt-2 w-full border-b border-border bg-transparent font-sans text-ink text-sm"
         />
       )}
     </div>

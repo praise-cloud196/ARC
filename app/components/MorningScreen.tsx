@@ -35,6 +35,7 @@ export function MorningScreen({ data }: { data: MorningScreenData }) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-6 py-16">
       <Panel
+        ambient
         header={
           <div className="text-ink-faint text-center font-mono text-[10px] uppercase tracking-[0.2em]">
             {dayLine}
@@ -42,7 +43,9 @@ export function MorningScreen({ data }: { data: MorningScreenData }) {
         }
       >
         <div className="space-y-3 text-center">
-          <div className="text-accent font-mono text-[30px] uppercase tracking-[0.08em]">Rank {identity.rank}</div>
+          <div className="text-accent font-mono text-[30px] uppercase tracking-[0.08em]">
+            Rank <span className="rank-drift">{identity.rank}</span>
+          </div>
 
           {hasCommitments ? (
             <ul className="space-y-1 py-2">

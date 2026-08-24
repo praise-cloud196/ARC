@@ -12,6 +12,7 @@ export function DayScreen({ commitments }: { commitments: CommitmentRowData[] })
   return (
     <main className="px-6 py-16">
       <Panel
+        ambient
         header={<div className="text-ink-faint text-center font-mono text-[10px] uppercase tracking-[0.2em]">Today</div>}
       >
         {commitments.length === 0 ? (
