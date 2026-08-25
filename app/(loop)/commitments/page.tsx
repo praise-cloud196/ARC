@@ -3,7 +3,7 @@ import { getCommitmentsForWeek } from "@/lib/commitments";
 import { startOfWeek } from "@/lib/day-math";
 import { computeLogicalDay, getTimezone } from "@/lib/logical-day";
 import { Panel } from "@/app/components/Panel";
-import { Grid, GridCell } from "@/app/components/GridCell";
+import { Grid, GridCell, orphanSpanClass } from "@/app/components/GridCell";
 import { SystemVoice } from "@/app/components/SystemVoice";
 import { submitDeclareCommitment } from "./actions";
 
@@ -42,8 +42,8 @@ export default async function CommitmentsPage() {
       >
         {existing.length > 0 && (
           <Grid className="mb-8">
-            {existing.map((c) => (
-              <GridCell key={c.id}>
+            {existing.map((c, i) => (
+              <GridCell key={c.id} className={orphanSpanClass(i, existing.length)}>
                 <p className="font-sans text-ink">{c.label}</p>
                 <p className="text-ink-faint mt-1 font-mono text-xs">
                   {c.domain}, tier {c.tier}, ×{c.weeklyTarget}/wk
@@ -53,7 +53,7 @@ export default async function CommitmentsPage() {
           </Grid>
         )}
 
-        <form action={submitDeclareCommitment} className="max-w-md space-y-4 border border-border p-4">
+        <form action={submitDeclareCommitment} className="mx-auto max-w-md space-y-4 border border-border p-4">
           <label className="block space-y-2">
             <SystemVoice size="sm">Domain</SystemVoice>
             <select name="domain" required className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink">

@@ -2,7 +2,7 @@ import { withReadTransaction } from "@/lib/with-transaction";
 import { listRecentMarks } from "@/lib/marks";
 import { DOMAINS } from "@/lib/domains";
 import { Panel } from "@/app/components/Panel";
-import { Grid, GridCell } from "@/app/components/GridCell";
+import { Grid, GridCell, orphanSpanClass } from "@/app/components/GridCell";
 import { SystemVoice } from "@/app/components/SystemVoice";
 import { submitMark, submitEditMark, submitVoidMark } from "./actions";
 
@@ -36,11 +36,11 @@ export default async function MarksPage({
   return (
     <main className="px-6 py-12">
       <Panel size="wide" header={<div className="text-ink-faint text-center font-mono text-[10px] uppercase tracking-[0.2em]">Marks</div>}>
-        <a href="/character-sheet" className="ia-link mb-8 block font-mono text-xs uppercase tracking-wide2">
-          Character Sheet
+        <a href="/character-sheet" className="ia-link text-ink-faint mb-8 inline-block font-mono text-xs normal-case">
+          ← Character Sheet
         </a>
 
-        <form action={submitMark} className="mb-8 max-w-md space-y-4 border border-border p-4">
+        <form action={submitMark} className="mx-auto mb-8 max-w-md space-y-4 border border-border p-4">
           <label className="block space-y-2">
             <SystemVoice size="sm">Domain</SystemVoice>
             <select name="domain" required className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink">
@@ -66,9 +66,9 @@ export default async function MarksPage({
 
         {recent.length > 0 && (
           <Grid>
-            {recent.map((mark) =>
+            {recent.map((mark, i) =>
               editingId === mark.id ? (
-                <GridCell key={mark.id}>
+                <GridCell key={mark.id} className={orphanSpanClass(i, recent.length)}>
                   <form action={submitEditMark} className="space-y-3">
                     <input type="hidden" name="markEventId" value={mark.id} />
                     <label className="block space-y-2">
@@ -108,7 +108,7 @@ export default async function MarksPage({
                   </form>
                 </GridCell>
               ) : (
-                <GridCell key={mark.id}>
+                <GridCell key={mark.id} className={orphanSpanClass(i, recent.length)}>
                   <p className="font-sans text-ink">{mark.note}</p>
                   <p className="text-ink-faint mt-1 font-mono text-xs">
                     {mark.domain}, {mark.logicalDay}

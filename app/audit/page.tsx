@@ -70,7 +70,7 @@ export default async function AuditPage({
   return (
     <main className="px-6 py-12">
       <Panel size="wide" header={<div className="text-ink-faint text-center font-mono text-[10px] uppercase tracking-[0.2em]">Baseline Audit</div>}>
-        <div className="max-w-xl">
+        <div className="mx-auto max-w-xl">
           <StepNav current={step} />
 
           {step === "domains" && <DomainsStep />}

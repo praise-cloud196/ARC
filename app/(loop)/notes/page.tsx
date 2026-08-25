@@ -2,7 +2,7 @@ import { withReadTransaction } from "@/lib/with-transaction";
 import { listRecentNotes } from "@/lib/notes";
 import { DOMAINS } from "@/lib/domains";
 import { Panel } from "@/app/components/Panel";
-import { Grid, GridCell } from "@/app/components/GridCell";
+import { Grid, GridCell, orphanSpanClass } from "@/app/components/GridCell";
 import { SystemVoice } from "@/app/components/SystemVoice";
 import { submitNote, submitEditNote, submitVoidNote } from "./actions";
 
@@ -37,11 +37,11 @@ export default async function NotesPage({
   return (
     <main className="px-6 py-12">
       <Panel size="wide" header={<div className="text-ink-faint text-center font-mono text-[10px] uppercase tracking-[0.2em]">Notes</div>}>
-        <a href="/character-sheet" className="ia-link mb-8 block font-mono text-xs uppercase tracking-wide2">
-          Character Sheet
+        <a href="/character-sheet" className="ia-link text-ink-faint mb-8 inline-block font-mono text-xs normal-case">
+          ← Character Sheet
         </a>
 
-        <form action={submitNote} className="mb-8 max-w-md space-y-4 border border-border p-4">
+        <form action={submitNote} className="mx-auto mb-8 max-w-md space-y-4 border border-border p-4">
           <label className="block space-y-2">
             <SystemVoice size="sm">Domain</SystemVoice>
             <select name="domain" required className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink">
@@ -63,9 +63,9 @@ export default async function NotesPage({
 
         {recent.length > 0 && (
           <Grid>
-            {recent.map((note) =>
+            {recent.map((note, i) =>
               editingId === note.id ? (
-                <GridCell key={note.id}>
+                <GridCell key={note.id} className={orphanSpanClass(i, recent.length)}>
                   <form action={submitEditNote} className="space-y-3">
                     <input type="hidden" name="noteEventId" value={note.id} />
                     <label className="block space-y-2">
@@ -96,7 +96,7 @@ export default async function NotesPage({
                   </form>
                 </GridCell>
               ) : (
-                <GridCell key={note.id}>
+                <GridCell key={note.id} className={orphanSpanClass(i, recent.length)}>
                   <p className="font-sans text-ink">{note.note}</p>
                   <p className="text-ink-faint mt-1 font-mono text-xs">
                     {note.domain}, {note.logicalDay}

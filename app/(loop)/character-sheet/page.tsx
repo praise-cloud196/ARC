@@ -3,7 +3,7 @@ import { computeIdentity } from "@/lib/identity";
 import { listOutcomes } from "@/lib/quests";
 import { SCORED_DOMAINS } from "@/lib/domains";
 import { Panel } from "@/app/components/Panel";
-import { Grid, GridCell } from "@/app/components/GridCell";
+import { GridCell } from "@/app/components/GridCell";
 import { SystemVoice } from "@/app/components/SystemVoice";
 
 // Reads live DB state on every load — see app/page.tsx's comment on this
@@ -57,13 +57,17 @@ export default async function CharacterSheetPage() {
             {outcomes.length === 0 ? (
               <p className="text-ink-faint font-sans text-sm">None recorded yet.</p>
             ) : (
-              <Grid>
+              // design-revision-v2.md §2: grid is for short, uniform items —
+              // Outcomes are paragraph-length statements, so a 2-column grid
+              // makes the varying text lengths read as ragged. Single
+              // full-width column instead.
+              <div className="space-y-4">
                 {outcomes.map((outcome) => (
                   <GridCell key={outcome.id}>
                     <p className="font-sans text-ink">{outcome.statement}</p>
                   </GridCell>
                 ))}
-              </Grid>
+              </div>
             )}
           </section>
 

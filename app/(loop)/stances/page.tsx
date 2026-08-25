@@ -1,7 +1,7 @@
 import { withReadTransaction } from "@/lib/with-transaction";
 import { getAllStancesForManagement, isWithinSeasonBoundary } from "@/lib/stances";
 import { Panel } from "@/app/components/Panel";
-import { Grid, GridCell } from "@/app/components/GridCell";
+import { Grid, GridCell, orphanSpanClass } from "@/app/components/GridCell";
 import { SystemVoice } from "@/app/components/SystemVoice";
 import { submitStance } from "./actions";
 
@@ -43,16 +43,16 @@ export default async function StancesPage({
   return (
     <main className="px-6 py-12">
       <Panel size="wide" header={<div className="text-ink-faint text-center font-mono text-[10px] uppercase tracking-[0.2em]">Stances</div>}>
-        <a href="/character-sheet" className="ia-link mb-8 block font-mono text-xs uppercase tracking-wide2">
-          Character Sheet
+        <a href="/character-sheet" className="ia-link text-ink-faint mb-8 inline-block font-mono text-xs normal-case">
+          ← Character Sheet
         </a>
 
         {params.error && <p className="text-ink-muted mb-6 font-sans text-sm">{params.error}</p>}
 
         {stances.length > 0 && (
           <Grid className="mb-10">
-            {stances.map((s) => (
-              <GridCell key={s.id}>
+            {stances.map((s, i) => (
+              <GridCell key={s.id} className={orphanSpanClass(i, stances.length)}>
                 <form action={submitStance} className="flex items-center justify-between gap-3">
                   <div>
                     <SystemVoice as="div" size="sm">
@@ -95,7 +95,7 @@ export default async function StancesPage({
           </p>
         )}
 
-        <form action={submitStance} className="max-w-md space-y-4 border border-border p-4">
+        <form action={submitStance} className="mx-auto max-w-md space-y-4 border border-border p-4">
           <SystemVoice size="sm">Declare a new behaviour</SystemVoice>
           <label className="block space-y-2">
             <SystemVoice size="sm">Behaviour</SystemVoice>
