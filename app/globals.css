@@ -251,7 +251,7 @@ body {
    screen" prohibition rather than contradicting it. */
 .corner-breathe {
   opacity: 0.4;
-  animation: corner-breathe 4s ease-in-out infinite;
+  animation: corner-breathe 3s ease-in-out infinite;
 }
 @keyframes corner-breathe {
   0%,
@@ -264,7 +264,7 @@ body {
 }
 
 .panel-scanline {
-  animation: panel-scanline 20s linear infinite;
+  animation: panel-scanline 8s linear infinite;
 }
 @keyframes panel-scanline {
   0% {
@@ -272,11 +272,11 @@ body {
     opacity: 0;
   }
   1% {
-    opacity: 0.08;
+    opacity: 0.12;
   }
   6% {
     transform: translateX(100%);
-    opacity: 0.08;
+    opacity: 0.12;
   }
   6.5%,
   100% {
