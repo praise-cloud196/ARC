@@ -85,9 +85,11 @@ export default async function CommitmentsPage() {
               className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink"
             />
           </label>
-          <button type="submit" className="ia border border-accent-dim px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-accent">
-            Declare
-          </button>
+          <div className="text-center">
+            <button type="submit" className="ia border border-accent-dim px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-accent">
+              Declare
+            </button>
+          </div>
         </form>
 
         <p className="text-ink-faint mt-4 text-xs">Once declared, these lock for the rest of the week.</p>

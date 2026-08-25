@@ -24,7 +24,7 @@ export default async function CharacterSheetPage() {
         header={<div className="text-ink-faint text-center font-mono text-[10px] uppercase tracking-[0.2em]">Character Sheet</div>}
       >
         <div className="text-ink">
-          <section className="mb-10">
+          <section className="mb-10 text-center">
             <SystemVoice as="div" size="lg" className="text-accent">
               Rank {identity.rank}
             </SystemVoice>
