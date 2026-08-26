@@ -287,3 +287,66 @@ async function computeClosingLine(client: PoolClient, asOfDay: string): Promise<
 export async function computeTonightsReport(client: PoolClient, now: Date = new Date()): Promise<string[]> {
   return computeNightlyReport(await computeNightlyReportData(client, now));
 }
+
+/**
+ * Shape a `CommitmentRow` needs to render — structurally identical to (and
+ * interchangeable with) app/components/CommitmentRow.tsx's own
+ * `CommitmentRowData`; defined here instead of imported from it since lib/
+ * doesn't reach into app/.
+ */
+export interface TodaysCommitmentRow {
+  id: string;
+  label: string;
+  completionEventId: string | null;
+  resistance: string | null;
+}
+
+/**
+ * Today's commitment rows, current logical day only — the data the Day
+ * state renders, and (docs/night-access-fix.md §2) what Night's "log
+ * something from today" disclosure reveals too, so both call this one
+ * function rather than keep two copies of the same completion-folding
+ * logic in sync.
+ */
+export async function computeTodaysCommitmentRows(client: PoolClient, now: Date = new Date()): Promise<TodaysCommitmentRow[]> {
+  const timezone = getTimezone();
+  const today = computeLogicalDay(now, timezone);
+  const weekStart = startOfWeek(today);
+  const weekCommitments = await getCommitmentsForWeek(client, weekStart);
+
+  // Today's raw rows only (not the whole log — this isn't the multi-value
+  // identity computation lib/effective-events.ts's fetchRawEventRows is
+  // meant for), folded the same way so a resistance/note correction is
+  // reflected even though the original commitment.completed write never
+  // had them.
+  const todaysRows = await client.query<RawEventRow>(
+    `SELECT id, type, occurred_at, timezone, domain, subject_id, payload, recorded_at
+     FROM events WHERE logical_day = $1 AND type IN ('commitment.completed', 'commitment.completed.corrected')`,
+    [today]
+  );
+  const effective = resolveEffectiveEvents(todaysRows.rows);
+  const effectiveById = new Map(effective.map((e) => [e.id, e]));
+  // subject_id (which commitment this completion belongs to) lives on the
+  // raw original row — effective events don't carry it, since
+  // resolveEffectiveEvents's shape is generic across every event type.
+  const originalIdByCommitmentId = new Map(
+    todaysRows.rows.filter((r) => r.type === "commitment.completed").map((r) => [r.subject_id, r.id])
+  );
+
+  return weekCommitments.map((c) => {
+    const originalId = originalIdByCommitmentId.get(c.id);
+    const completion = originalId ? effectiveById.get(originalId) : undefined;
+    // A voided completion (design-revision-v2.md §7) reads as not
+    // completed — the row goes back to offering Complete, not stuck on
+    // Done. The original event id is still real (never removed), just not
+    // surfaced as "the current completion" here.
+    const voided = completion?.payload.voided === true;
+    const resistance = completion?.payload.resistance;
+    return {
+      id: c.id,
+      label: c.label,
+      completionEventId: voided ? null : (originalId ?? null),
+      resistance: voided || typeof resistance !== "string" ? null : resistance,
+    };
+  });
+}

@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation";
 import { withReadTransaction, withTransaction } from "@/lib/with-transaction";
-import { determineLoopState, recordAppOpened, computeMorningScreenData, computeTonightsReport } from "@/lib/loop";
-import { getCommitmentsForWeek } from "@/lib/commitments";
-import { startOfWeek } from "@/lib/day-math";
-import { computeLogicalDay, getTimezone } from "@/lib/logical-day";
-import { resolveEffectiveEvents, type RawEventRow } from "@/lib/effective-events";
+import {
+  determineLoopState,
+  recordAppOpened,
+  computeMorningScreenData,
+  computeTonightsReport,
+  computeTodaysCommitmentRows,
+} from "@/lib/loop";
 import { MorningScreen } from "@/app/components/MorningScreen";
 import { DayScreen } from "@/app/components/DayScreen";
 import { NightScreen } from "@/app/components/NightScreen";
@@ -50,53 +52,18 @@ export default async function TodayPage() {
   }
 
   if (state === "night") {
-    const lines = await withReadTransaction((client) => computeTonightsReport(client, now));
-    return <NightScreen lines={lines} />;
+    // docs/night-access-fix.md §2: Night also gets today's commitment rows
+    // (same data, same query Day itself uses) so the screen can offer a
+    // way back to them — the logical day, and so the ability to log
+    // conduct, stays open until the 6am boundary even though the display
+    // hour has already switched the screen to Night.
+    const [lines, todaysCommitments] = await withReadTransaction((client) =>
+      Promise.all([computeTonightsReport(client, now), computeTodaysCommitmentRows(client, now)])
+    );
+    return <NightScreen lines={lines} todaysCommitments={todaysCommitments} />;
   }
 
-  const timezone = getTimezone();
-  const today = computeLogicalDay(now, timezone);
-  const weekStart = startOfWeek(today);
-
-  const commitments: CommitmentRowData[] = await withReadTransaction(async (client) => {
-    const weekCommitments = await getCommitmentsForWeek(client, weekStart);
-
-    // Today's raw rows only (not the whole log — this isn't the
-    // multi-value identity computation lib/effective-events.ts's
-    // fetchRawEventRows is meant for), folded the same way so a
-    // resistance/note correction is reflected even though the original
-    // commitment.completed write never had them.
-    const todaysRows = await client.query<RawEventRow>(
-      `SELECT id, type, occurred_at, timezone, domain, subject_id, payload, recorded_at
-       FROM events WHERE logical_day = $1 AND type IN ('commitment.completed', 'commitment.completed.corrected')`,
-      [today]
-    );
-    const effective = resolveEffectiveEvents(todaysRows.rows);
-    const effectiveById = new Map(effective.map((e) => [e.id, e]));
-    // subject_id (which commitment this completion belongs to) lives on
-    // the raw original row — effective events don't carry it, since
-    // resolveEffectiveEvents's shape is generic across every event type.
-    const originalIdByCommitmentId = new Map(
-      todaysRows.rows.filter((r) => r.type === "commitment.completed").map((r) => [r.subject_id, r.id])
-    );
-
-    return weekCommitments.map((c) => {
-      const originalId = originalIdByCommitmentId.get(c.id);
-      const completion = originalId ? effectiveById.get(originalId) : undefined;
-      // A voided completion (design-revision-v2.md §7) reads as not
-      // completed — the row goes back to offering Complete, not stuck on
-      // Done. The original event id is still real (never removed), just
-      // not surfaced as "the current completion" here.
-      const voided = completion?.payload.voided === true;
-      const resistance = completion?.payload.resistance;
-      return {
-        id: c.id,
-        label: c.label,
-        completionEventId: voided ? null : (originalId ?? null),
-        resistance: voided || typeof resistance !== "string" ? null : resistance,
-      };
-    });
-  });
+  const commitments: CommitmentRowData[] = await withReadTransaction((client) => computeTodaysCommitmentRows(client, now));
 
   return <DayScreen commitments={commitments} />;
 }
