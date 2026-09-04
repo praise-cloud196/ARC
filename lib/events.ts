@@ -22,6 +22,9 @@ export const CORRECTABLE_EVENT_TYPES = [
   "life.entry_logged",
   "metric.recorded",
   "note.recorded",
+  // milestone-5-spec.md §2: conduct, same category as commitment.completed
+  // (design-revision-v2.md §7.1) — voidable same logical day only.
+  "quest.step_completed",
 ] as const;
 
 export type CorrectableEventType = (typeof CORRECTABLE_EVENT_TYPES)[number];
@@ -51,6 +54,7 @@ export const EVENT_TYPES = [
   "app.opened",
   "quest.created",
   "quest.step_completed",
+  "quest.step_completed.corrected",
   "quest.abandoned",
   "probe.resolved",
   "outcome.achieved",

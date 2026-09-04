@@ -27,13 +27,18 @@ describe.skipIf(!hasDb)("XP (milestone-2-spec.md §1)", () => {
         domain: "body",
         payload: { tier: 1 }, // 10 XP, will be corrected to tier 3 (50 XP)
       });
-      // quest.step_completed also earns XP (milestone-2-spec.md §1), but
-      // quests aren't a built feature yet (no correction type exists for
-      // it), so only the correction path is exercised via commitment.completed.
+      // quest.step_completed also earns XP (milestone-2-spec.md §1). No
+      // correction type existed for it at the time this test was written,
+      // so only the correction path is exercised via commitment.completed.
+      // milestone-5-spec.md §2 / db/migrations/0010_undertakings_probes.sql's
+      // events_quest_actions_have_subject now requires a subject_id on this
+      // type — a placeholder UUID is fine here, since this test only cares
+      // about the XP arithmetic, not a real Undertaking row.
       await appendEvent(client, {
         type: "quest.step_completed",
         occurredAt: new Date("2026-04-02T10:00:00-05:00"),
         domain: "body",
+        subjectId: "00000000-0000-0000-0000-000000000001",
         payload: { tier: 2 }, // 25 XP
       });
       // Zero-XP events in the same domain must not contribute.

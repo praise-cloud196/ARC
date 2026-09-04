@@ -163,3 +163,15 @@ export const RETURN_GAP_THRESHOLD_DAYS = 14;
 export const RECOVERY_PHASE_MAX_WEEKS = 2;
 export const RECOVERY_PHASE_MIN_COMMITMENTS = 1;
 export const RECOVERY_PHASE_MAX_COMMITMENTS = 2;
+
+// --- Quests: Undertakings and Probes (PRD-v1.0.md §13, milestone-5-spec.md §1) --
+
+/**
+ * Max active Undertakings / Probes at once. Mirrored in
+ * db/migrations/0010_undertakings_probes.sql's `forbid_excess_active_quests`
+ * trigger, which is the real enforcement (a CHECK/trigger can't import this
+ * file) — if these ever change, that migration's hardcoded numbers must
+ * change with them, via a new migration.
+ */
+export const QUEST_MAX_ACTIVE_UNDERTAKINGS = 3;
+export const QUEST_MAX_ACTIVE_PROBES = 2;

@@ -16,6 +16,7 @@ import { computeLogicalDay, getDisplayHour, getTimezone } from "./logical-day";
 import { addDays, daysBetweenInclusive, startOfWeek } from "./day-math";
 import { computeIdentity, type Identity } from "./identity";
 import { computeCurrentMomentum, getCommitmentsForWeek, type Commitment } from "./commitments";
+import { listProbesAwaitingResolution, type Probe } from "./quests";
 import type { MomentumResult } from "./momentum";
 import { resolveEffectiveEvents, type RawEventRow } from "./effective-events";
 import { selectClosingLine, type FactCommitment, type FactCompletion } from "./report-facts";
@@ -115,7 +116,7 @@ interface MainQuestRow {
   statement: string;
 }
 
-/** The earliest-created active Outcome — milestone-4-spec.md doesn't define "main quest" selection beyond this; a fuller rule arrives with milestone 5's Undertakings/Probes. */
+/** The earliest-created active Outcome — milestone-4-spec.md doesn't define "main quest" selection beyond this. milestone-5-spec.md doesn't revisit it either (in scope only for Undertakings/Probes themselves); still open for a later milestone. */
 async function getMainQuest(client: PoolClient): Promise<string | null> {
   const result = await client.query<MainQuestRow>(
     `SELECT statement FROM quests WHERE kind = 'outcome' AND status = 'active' ORDER BY created_at ASC LIMIT 1`
@@ -130,6 +131,8 @@ export interface MorningScreenData {
   dayNumber: number | null;
   mainQuest: string | null;
   todaysCommitments: Commitment[];
+  /** milestone-5-spec.md §7 / architecture-and-ux-v1.0.md §4.4: a Probe past its decision date stays here, with its resolution actions, until resolved — the one place Morning's "nothing else" rule is already known to bend. */
+  probesAwaitingResolution: Probe[];
 }
 
 /** Assembles everything the Morning state renders (PRD §12.1). */
@@ -142,6 +145,7 @@ export async function computeMorningScreenData(client: PoolClient, now: Date = n
   const season = await getCurrentSeason(client);
   const mainQuest = await getMainQuest(client);
   const todaysCommitments = await getCommitmentsForWeek(client, startOfWeek(today));
+  const probesAwaitingResolution = await listProbesAwaitingResolution(client, today);
 
   const dayNumber = season
     ? daysBetweenInclusive(computeLogicalDay(season.opened_at, timezone), today)
@@ -154,6 +158,7 @@ export async function computeMorningScreenData(client: PoolClient, now: Date = n
     dayNumber,
     mainQuest,
     todaysCommitments,
+    probesAwaitingResolution,
   };
 }
 

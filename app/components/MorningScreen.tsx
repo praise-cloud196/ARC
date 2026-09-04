@@ -1,5 +1,6 @@
 import { Panel } from "./Panel";
 import { SystemVoice } from "./SystemVoice";
+import { ProbeResolutionCard } from "./ProbeResolutionCard";
 import type { MorningScreenData } from "@/lib/loop";
 
 /**
@@ -25,7 +26,7 @@ import type { MorningScreenData } from "@/lib/loop";
  * inventing an unrelated layout.
  */
 export function MorningScreen({ data }: { data: MorningScreenData }) {
-  const { identity, momentum, seasonNumber, dayNumber, mainQuest, todaysCommitments } = data;
+  const { identity, momentum, seasonNumber, dayNumber, mainQuest, todaysCommitments, probesAwaitingResolution } = data;
   const hasCommitments = todaysCommitments.length > 0;
   const dayLine =
     seasonNumber !== null && dayNumber !== null
@@ -74,6 +75,14 @@ export function MorningScreen({ data }: { data: MorningScreenData }) {
           {!hasCommitments && <p className="font-sans text-ink-muted mt-4 text-[14px]">Nothing is required of you today.</p>}
         </div>
       </Panel>
+
+      {probesAwaitingResolution.length > 0 && (
+        <div className="mt-6 w-full max-w-md space-y-4">
+          {probesAwaitingResolution.map((probe) => (
+            <ProbeResolutionCard key={probe.id} probe={probe} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -72,6 +72,9 @@ export default async function CharacterSheetPage() {
           </section>
 
           <section className="mt-10 flex flex-wrap gap-x-5 gap-y-2 border-t border-border pt-6">
+            <a href="/quests" className="ia-link font-mono text-xs uppercase tracking-wide2">
+              Quests
+            </a>
             <a href="/marks" className="ia-link font-mono text-xs uppercase tracking-wide2">
               Marks
             </a>

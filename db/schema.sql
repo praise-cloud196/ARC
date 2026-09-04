@@ -38,6 +38,7 @@ CREATE TABLE events (
                     'app.opened',
                     'quest.created',
                     'quest.step_completed',
+                    'quest.step_completed.corrected',
                     'quest.abandoned',
                     'probe.resolved',
                     'outcome.achieved',
@@ -95,11 +96,42 @@ CREATE TABLE events (
     type NOT IN ('mark.recorded', 'mark.recorded.corrected')
     OR (payload ? 'note' AND payload->>'note' <> '')
   ),
-  -- Only kind 'outcome' exists until milestone 5 adds
-  -- Commitment/Undertaking/Probe (milestone-3-spec.md §2 step 5).
+  -- milestone-5-spec.md §2: outcome/undertaking/probe payload shapes.
   CHECK (
     type <> 'quest.created'
-    OR (payload->>'kind' = 'outcome' AND payload ? 'statement' AND payload->>'statement' <> '')
+    OR (payload ? 'statement' AND payload->>'statement' <> '' AND (
+      (payload->>'kind' = 'outcome')
+      OR (payload->>'kind' = 'undertaking')
+      OR (payload->>'kind' = 'probe' AND payload ? 'decisionDate' AND payload ? 'signal' AND payload->>'signal' <> '')
+    ))
+  ),
+  -- quest.step_completed / quest.abandoned / probe.resolved / outcome.achieved
+  -- all act on an existing quests row.
+  CHECK (
+    type NOT IN ('quest.step_completed', 'quest.abandoned', 'probe.resolved', 'outcome.achieved')
+    OR subject_id IS NOT NULL
+  ),
+  -- probe.resolved's action vocabulary; fold requires a note (PRD §13).
+  CHECK (
+    type <> 'probe.resolved'
+    OR (
+      payload ? 'action' AND payload->>'action' IN ('double_down', 'fold', 'extend')
+      AND (payload->>'action' <> 'fold' OR (payload ? 'note' AND payload->>'note' <> ''))
+    )
+  ),
+  -- design-revision-v2.md §7.2: conduct is voidable same logical day only.
+  -- "not voided" is the absence of the key, not a false-y placeholder.
+  CHECK (
+    type NOT IN (
+      'commitment.completed', 'commitment.completed.corrected',
+      'quest.step_completed', 'quest.step_completed.corrected',
+      'metric.recorded', 'metric.recorded.corrected',
+      'note.recorded', 'note.recorded.corrected',
+      'mark.recorded', 'mark.recorded.corrected',
+      'life.entry_logged', 'life.entry_logged.corrected'
+    )
+    OR NOT (payload ? 'voided')
+    OR payload->>'voided' = 'true'
   ),
   -- milestone-3-spec.md §6: starting rank capped at C, adjustable down from
   -- the proposal only, never up. array_position over RANKS' fixed order
@@ -238,16 +270,57 @@ CREATE TABLE stances (
   updated_at timestamptz NOT NULL DEFAULT clock_timestamp()
 );
 
--- milestone-3-spec.md §2 step 5: only kind 'outcome' (the three 2027
--- statements) exists in milestone 3. Commitment/Undertaking/Probe columns
--- arrive with milestone 5 as new ALTERs, not speculatively now.
+-- milestone-5-spec.md §1: Outcome (milestone 3), Undertaking and Probe
+-- (milestone 5). No domain column — Undertaking/Probe are Career-only in
+-- v1 and that constant lives on the events they write, not here (§0).
+-- decision_date/signal exist only for Probes, and are both required when
+-- they do (PRD §13: "neither is optional"). No steps column/table either
+-- — an Undertaking's steps are quest.step_completed events, not a
+-- pre-declared checklist (§1).
 CREATE TABLE quests (
-  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  kind       text NOT NULL CHECK (kind = 'outcome'),
-  statement  text NOT NULL CHECK (statement <> ''),
-  status     text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'achieved', 'abandoned')),
-  created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  kind          text NOT NULL CHECK (kind IN ('outcome', 'undertaking', 'probe')),
+  statement     text NOT NULL CHECK (statement <> ''),
+  status        text NOT NULL DEFAULT 'active' CHECK (
+                  (kind = 'outcome' AND status IN ('active', 'achieved', 'abandoned'))
+                  OR (kind = 'undertaking' AND status IN ('active', 'completed', 'abandoned'))
+                  OR (kind = 'probe' AND status IN ('active', 'folded', 'abandoned'))
+                ),
+  decision_date date,
+  signal        text,
+  created_at    timestamptz NOT NULL DEFAULT clock_timestamp(),
+  CHECK (
+    (kind = 'probe' AND decision_date IS NOT NULL AND signal IS NOT NULL AND signal <> '')
+    OR (kind <> 'probe' AND decision_date IS NULL AND signal IS NULL)
+  )
 );
+
+-- Max active per kind (PRD §13: 3 Undertakings, 2 Probes) — must match
+-- lib/calibration.ts's QUEST_MAX_ACTIVE_UNDERTAKINGS / QUEST_MAX_ACTIVE_PROBES.
+CREATE OR REPLACE FUNCTION forbid_excess_active_quests() RETURNS trigger AS $$
+DECLARE
+  active_count integer;
+  max_active integer;
+BEGIN
+  IF NEW.kind = 'undertaking' THEN
+    max_active := 3;
+  ELSIF NEW.kind = 'probe' THEN
+    max_active := 2;
+  ELSE
+    RETURN NEW;
+  END IF;
+
+  SELECT count(*) INTO active_count FROM quests WHERE kind = NEW.kind AND status = 'active';
+  IF active_count >= max_active THEN
+    RAISE EXCEPTION 'at most % active % quests are allowed', max_active, NEW.kind;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER quests_max_active
+  BEFORE INSERT ON quests
+  FOR EACH ROW EXECUTE FUNCTION forbid_excess_active_quests();
 
 -- milestone-3-spec.md §2 step 6: Season 01's opening only. The fuller
 -- open-declaration fields PRD §15 describes belong to milestone 7's actual
