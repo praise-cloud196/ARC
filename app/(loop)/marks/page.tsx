@@ -56,8 +56,12 @@ export default async function MarksPage({
             <textarea name="note" required rows={3} className="ia w-full rounded border border-border bg-surface p-3 font-sans text-ink" />
           </label>
           <label className="block space-y-2">
-            <SystemVoice size="sm">Artifact (optional)</SystemVoice>
-            <input type="text" name="artifact" className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink" />
+            <SystemVoice size="sm">Reference — label (optional)</SystemVoice>
+            <input type="text" name="referenceLabel" className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink" />
+          </label>
+          <label className="block space-y-2">
+            <SystemVoice size="sm">Reference — URL (optional)</SystemVoice>
+            <input type="url" name="referenceUrl" className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink" />
           </label>
           <button type="submit" className="ia border border-accent-dim px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-accent">
             Add Mark
@@ -86,11 +90,20 @@ export default async function MarksPage({
                       />
                     </label>
                     <label className="block space-y-2">
-                      <SystemVoice size="sm">Artifact (optional)</SystemVoice>
+                      <SystemVoice size="sm">Reference — label (optional)</SystemVoice>
                       <input
                         type="text"
-                        name="artifact"
-                        defaultValue={mark.artifact ?? ""}
+                        name="referenceLabel"
+                        defaultValue={mark.reference?.label ?? ""}
+                        className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink"
+                      />
+                    </label>
+                    <label className="block space-y-2">
+                      <SystemVoice size="sm">Reference — URL (optional)</SystemVoice>
+                      <input
+                        type="url"
+                        name="referenceUrl"
+                        defaultValue={mark.reference?.url ?? ""}
                         className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink"
                       />
                     </label>
@@ -109,9 +122,16 @@ export default async function MarksPage({
                 </GridCell>
               ) : (
                 <GridCell key={mark.id} className={orphanSpanClass(i, recent.length)}>
-                  <p className="font-sans text-ink">{mark.note}</p>
+                  <p className="font-sans text-ink text-[15px] leading-relaxed">{mark.note}</p>
+                  {mark.reference && (
+                    <p className="mt-1">
+                      <a href={mark.reference.url} className="ia-link font-sans text-sm" target="_blank" rel="noreferrer">
+                        {mark.reference.label}
+                      </a>
+                    </p>
+                  )}
                   <p className="text-ink-faint mt-1 font-mono text-xs">
-                    {mark.domain}, {mark.logicalDay}
+                    {mark.domain}, {mark.logicalDay}, {mark.state}
                     {mark.voided ? ", withdrawn" : ""}
                   </p>
                   {!mark.voided && (

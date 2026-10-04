@@ -63,8 +63,18 @@ export function MorningScreen({ data }: { data: MorningScreenData }) {
           )}
 
           {mainQuest && (
-            <SystemVoice as="div" size="base" className="text-ink-muted">
-              Main Quest — <span className="font-sans normal-case tracking-normal text-ink">{mainQuest}</span>
+            // Outcome statements run to a full paragraph in practice, not
+            // the PRD §12.1 example's one short line — centred, tight-leading
+            // multi-line text is genuinely harder to read (the eye has to
+            // hunt for each line's start), so this overrides the block's
+            // ambient text-center and gives the statement itself room to
+            // breathe, while the "Main Quest" label stays in the system
+            // voice's usual size/tracking.
+            <SystemVoice as="div" size="base" className="text-ink-muted text-left">
+              Main Quest —{" "}
+              <span className="font-sans normal-case tracking-normal text-ink text-[15px] leading-relaxed">
+                {mainQuest}
+              </span>
             </SystemVoice>
           )}
 

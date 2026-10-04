@@ -26,6 +26,21 @@ function optionalString(formData: FormData, key: string): string | undefined {
   return typeof value === "string" && value.trim() !== "" ? value.trim() : undefined;
 }
 
+/**
+ * docs/milestone-6-spec.md §1: label and URL are required together — one
+ * without the other isn't a Reference. Left blank entirely, it's just an
+ * undocumented Mark.
+ */
+function readReference(formData: FormData): { label: string; url: string } | undefined {
+  const label = optionalString(formData, "referenceLabel");
+  const url = optionalString(formData, "referenceUrl");
+  if (label === undefined && url === undefined) return undefined;
+  if (label === undefined || url === undefined) {
+    throw new Error("A reference needs both a label and a URL.");
+  }
+  return { label, url };
+}
+
 export async function submitUndertaking(formData: FormData): Promise<void> {
   const statement = requireString(formData, "statement");
   await withTransaction((client) => createUndertaking(client, { statement }));
@@ -42,8 +57,8 @@ export async function submitUndertakingStep(formData: FormData): Promise<void> {
 export async function submitCompleteUndertaking(formData: FormData): Promise<void> {
   const undertakingId = requireString(formData, "undertakingId");
   const note = optionalString(formData, "note");
-  const artifact = optionalString(formData, "artifact");
-  await withTransaction((client) => completeUndertaking(client, { undertakingId, note, artifact }));
+  const reference = readReference(formData);
+  await withTransaction((client) => completeUndertaking(client, { undertakingId, note, reference }));
   redirect("/quests");
 }
 
@@ -59,8 +74,8 @@ export async function submitAchieveOutcome(formData: FormData): Promise<void> {
   const outcomeId = requireString(formData, "outcomeId");
   const domain = requireString(formData, "domain") as Domain;
   const note = requireString(formData, "note");
-  const artifact = optionalString(formData, "artifact");
-  await withTransaction((client) => achieveOutcome(client, { outcomeId, domain, note, artifact }));
+  const reference = readReference(formData);
+  await withTransaction((client) => achieveOutcome(client, { outcomeId, domain, note, reference }));
   redirect("/quests");
 }
 

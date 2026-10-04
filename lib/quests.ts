@@ -14,7 +14,7 @@
 import type { Pool, PoolClient } from "pg";
 import { appendCorrection, appendEvent, type AppendedEvent } from "./events";
 import { computeLogicalDay, getTimezone } from "./logical-day";
-import { recordMark, retroactiveMarkStats } from "./marks";
+import { recordMark, retroactiveMarkStats, type MarkReference } from "./marks";
 import { AUDIT_MIN_RETROACTIVE_MARKS, type XpTier } from "./calibration";
 import type { Domain } from "./domains";
 
@@ -86,7 +86,7 @@ export interface AchieveOutcomeInput {
   domain: Domain;
   /** "What changed because of this?" — required, same as any Mark (PRD §14). */
   note: string;
-  artifact?: string;
+  reference?: MarkReference;
   occurredAt?: Date;
   timezone?: string;
 }
@@ -107,7 +107,7 @@ export async function achieveOutcome(client: Queryable, input: AchieveOutcomeInp
   await recordMark(client, {
     domain: input.domain,
     note: input.note,
-    artifact: input.artifact,
+    reference: input.reference,
     sourceQuestId: input.outcomeId,
     occurredAt,
     timezone,
@@ -287,7 +287,7 @@ export interface CompleteUndertakingInput {
   undertakingId: string;
   /** Optional — "Completion may generate a Mark" (PRD §13), not always. Filling this in is what generates one. */
   note?: string;
-  artifact?: string;
+  reference?: MarkReference;
   occurredAt?: Date;
   timezone?: string;
 }
@@ -306,7 +306,7 @@ export async function completeUndertaking(client: Queryable, input: CompleteUnde
     await recordMark(client, {
       domain: QUEST_DOMAIN,
       note: input.note,
-      artifact: input.artifact,
+      reference: input.reference,
       sourceQuestId: input.undertakingId,
       occurredAt: input.occurredAt,
       timezone: input.timezone,

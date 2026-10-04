@@ -30,18 +30,35 @@ export async function submitDomainNotes(formData: FormData): Promise<void> {
   redirect("/audit?step=marks");
 }
 
+/**
+ * docs/milestone-6-spec.md §1: label and URL are required together — one
+ * without the other isn't a Reference. Left blank entirely, it's just an
+ * undocumented Mark.
+ */
+function readReference(formData: FormData): { label: string; url: string } | undefined {
+  const label = formData.get("referenceLabel");
+  const url = formData.get("referenceUrl");
+  const trimmedLabel = typeof label === "string" ? label.trim() : "";
+  const trimmedUrl = typeof url === "string" ? url.trim() : "";
+  if (trimmedLabel === "" && trimmedUrl === "") return undefined;
+  if (trimmedLabel === "" || trimmedUrl === "") {
+    throw new Error("A reference needs both a label and a URL.");
+  }
+  return { label: trimmedLabel, url: trimmedUrl };
+}
+
 export async function submitRetroactiveMark(formData: FormData): Promise<void> {
   const domain = requireString(formData, "domain") as Domain;
   const occurredAt = requireString(formData, "occurredAt");
   const note = requireString(formData, "note");
-  const artifact = formData.get("artifact");
+  const reference = readReference(formData);
 
   await withTransaction((client) =>
     recordRetroactiveMark(client, {
       domain: domain as Exclude<Domain, "life">,
       occurredAt: new Date(`${occurredAt}T12:00:00`),
       note,
-      artifact: typeof artifact === "string" && artifact.trim() !== "" ? artifact.trim() : undefined,
+      reference,
     })
   );
   redirect("/audit?step=marks");

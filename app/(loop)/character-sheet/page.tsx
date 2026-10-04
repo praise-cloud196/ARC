@@ -64,7 +64,12 @@ export default async function CharacterSheetPage() {
               <div className="space-y-4">
                 {outcomes.map((outcome) => (
                   <GridCell key={outcome.id}>
-                    <p className="font-sans text-ink">{outcome.statement}</p>
+                    {/* Outcome statements run long (multi-sentence, PRD §11's
+                        "2027 statements") — text-[15px]/leading-relaxed
+                        instead of the plain default, which renders these at
+                        browser-default leading (~1.15) and reads dense on a
+                        phone. */}
+                    <p className="font-sans text-ink text-[15px] leading-relaxed">{outcome.statement}</p>
                   </GridCell>
                 ))}
               </div>

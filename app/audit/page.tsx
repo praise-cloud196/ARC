@@ -144,8 +144,12 @@ async function MarksStep() {
           <textarea name="note" required rows={2} className="ia w-full rounded border border-border bg-surface p-3 font-sans text-ink" />
         </label>
         <label className="block space-y-2">
-          <SystemVoice size="sm">Artifact (optional)</SystemVoice>
-          <input type="text" name="artifact" className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink" />
+          <SystemVoice size="sm">Reference — label (optional)</SystemVoice>
+          <input type="text" name="referenceLabel" className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink" />
+        </label>
+        <label className="block space-y-2">
+          <SystemVoice size="sm">Reference — URL (optional)</SystemVoice>
+          <input type="url" name="referenceUrl" className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink" />
         </label>
         <button type="submit" className="ia border border-border px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-ink">
           Add Mark

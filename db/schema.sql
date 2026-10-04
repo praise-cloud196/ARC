@@ -96,6 +96,20 @@ CREATE TABLE events (
     type NOT IN ('mark.recorded', 'mark.recorded.corrected')
     OR (payload ? 'note' AND payload->>'note' <> '')
   ),
+  -- docs/milestone-6-spec.md §1-§2: a Mark's optional Reference (label+url)
+  -- replaces the old bare `artifact` string. Absent entirely is fine (a
+  -- Completed, undocumented Mark); present, both fields are required.
+  CHECK (
+    type NOT IN ('mark.recorded', 'mark.recorded.corrected')
+    OR NOT (payload ? 'reference')
+    OR (
+      jsonb_typeof(payload->'reference') = 'object'
+      AND payload->'reference' ? 'label'
+      AND payload->'reference' ? 'url'
+      AND payload->'reference'->>'label' <> ''
+      AND payload->'reference'->>'url' <> ''
+    )
+  ),
   -- milestone-5-spec.md §2: outcome/undertaking/probe payload shapes.
   CHECK (
     type <> 'quest.created'

@@ -92,7 +92,7 @@ export default async function QuestsPage() {
             <Grid>
               {undertakings.map((u, i) => (
                 <GridCell key={u.id} className={orphanSpanClass(i, undertakings.length)}>
-                  <p className="font-sans text-ink">{u.statement}</p>
+                  <p className="font-sans text-ink text-[15px] leading-relaxed">{u.statement}</p>
                   <p className="text-ink-faint mt-1 font-mono text-xs">
                     {u.status} &middot; {u.stepCount} step{u.stepCount === 1 ? "" : "s"}
                   </p>
@@ -122,6 +122,18 @@ export default async function QuestsPage() {
                             name="note"
                             rows={2}
                             placeholder="What changed because of this?"
+                            className="ia w-full border border-border bg-surface p-2 font-sans text-ink text-sm"
+                          />
+                          <input
+                            type="text"
+                            name="referenceLabel"
+                            placeholder="Reference label (optional)"
+                            className="ia w-full border border-border bg-surface p-2 font-sans text-ink text-sm"
+                          />
+                          <input
+                            type="url"
+                            name="referenceUrl"
+                            placeholder="Reference URL (optional)"
                             className="ia w-full border border-border bg-surface p-2 font-sans text-ink text-sm"
                           />
                           <button type="submit" className="ia border border-accent-dim px-3 py-1.5 font-mono text-xs uppercase tracking-wide2 text-accent">
@@ -180,7 +192,7 @@ export default async function QuestsPage() {
                   <ProbeResolutionCard key={p.id} probe={p} />
                 ) : (
                   <GridCell key={p.id}>
-                    <p className="font-sans text-ink">{p.statement}</p>
+                    <p className="font-sans text-ink text-[15px] leading-relaxed">{p.statement}</p>
                     <p className="text-ink-faint mt-1 font-mono text-xs">
                       {p.status} &middot; decision {p.decisionDate} &middot; signal: {p.signal}
                     </p>
@@ -202,7 +214,7 @@ export default async function QuestsPage() {
             <div className="space-y-4">
               {outcomes.map((o) => (
                 <GridCell key={o.id}>
-                  <p className="font-sans text-ink">{o.statement}</p>
+                  <p className="font-sans text-ink text-[15px] leading-relaxed">{o.statement}</p>
                   <p className="text-ink-faint mt-1 font-mono text-xs">{o.status}</p>
 
                   {o.status === "active" && (
@@ -224,6 +236,14 @@ export default async function QuestsPage() {
                           <label className="block space-y-2">
                             <SystemVoice size="sm">What changed because of this?</SystemVoice>
                             <textarea name="note" required rows={2} className="ia w-full border border-border bg-surface p-2 font-sans text-ink text-sm" />
+                          </label>
+                          <label className="block space-y-2">
+                            <SystemVoice size="sm">Reference label (optional)</SystemVoice>
+                            <input type="text" name="referenceLabel" className="ia w-full border border-border bg-surface p-2 font-sans text-ink text-sm" />
+                          </label>
+                          <label className="block space-y-2">
+                            <SystemVoice size="sm">Reference URL (optional)</SystemVoice>
+                            <input type="url" name="referenceUrl" className="ia w-full border border-border bg-surface p-2 font-sans text-ink text-sm" />
                           </label>
                           <button type="submit" className="ia border border-accent-dim px-3 py-1.5 font-mono text-xs uppercase tracking-wide2 text-accent">
                             Confirm achieved

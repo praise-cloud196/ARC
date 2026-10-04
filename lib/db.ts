@@ -39,7 +39,30 @@ export function getPool(): Pool {
     // connection string itself (Neon's includes sslmode=require) and
     // verifies the server certificate properly. Forcing
     // rejectUnauthorized: false would silently disable that verification.
-    pool = new Pool({ connectionString });
+    pool = new Pool({
+      connectionString,
+      // Serverless + Neon: the compute suspends after idle and the pooler
+      // drops idle sockets, but a warm Vercel instance keeps handing the
+      // dead connection back out — the first request after idle then 500s
+      // and a reload "fixes" it. Retire idle clients well before that
+      // happens, keep TCP alive, and bound how long a cold-start connect
+      // may hang instead of waiting forever.
+      max: POOL_MAX,
+      idleTimeoutMillis: POOL_IDLE_TIMEOUT_MS,
+      connectionTimeoutMillis: POOL_CONNECT_TIMEOUT_MS,
+      keepAlive: true,
+    });
+    // An error on an idle pooled client (Neon closing it) is emitted on the
+    // pool; without a listener it is an unhandled 'error' event.
+    pool.on("error", (err) => {
+      console.error("Idle Postgres client error (evicted from pool):", err.message);
+    });
   }
   return pool;
 }
+
+// Infrastructure tuning, not product calibration (AGENTS.md hard rule 4
+// covers lib/calibration.ts's game-mechanics constants).
+const POOL_MAX = 5;
+const POOL_IDLE_TIMEOUT_MS = 10_000;
+const POOL_CONNECT_TIMEOUT_MS = 15_000;
