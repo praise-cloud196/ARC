@@ -3,6 +3,7 @@ import { SystemVoice } from "./SystemVoice";
 import { ProbeResolutionCard } from "./ProbeResolutionCard";
 import { ClampText } from "./ClampText";
 import { CarryOverPrompt } from "./CarryOverPrompt";
+import { ModeGlow } from "./ModeGlow";
 import type { MorningScreenData } from "@/lib/loop";
 
 /**
@@ -37,7 +38,9 @@ export function MorningScreen({ data, carryableLabels = [] }: { data: MorningScr
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-6 py-16">
+      <ModeGlow mode="morning" />
       <Panel
+        mode="morning"
         ambient
         header={
           <div className="text-ink-faint text-center font-mono text-[10px] uppercase tracking-[0.2em]">

@@ -296,6 +296,54 @@ body {
   }
 }
 
+/* Today's three states (Morning / Day / Night) — each looks distinct
+   without adding content. Morning: cooler, slightly lighter surface, light
+   from above, slow arrival. Day: the neutral base, quick and still.
+   Night: darker surface, dim corner marks, light from below, slow fade
+   with no movement. */
+.mode-glow {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.mode-glow[data-mode="morning"] {
+  background: radial-gradient(ellipse 90% 55% at 50% 0%, rgba(143, 211, 232, 0.12), transparent 70%);
+}
+.mode-glow[data-mode="night"] {
+  background: radial-gradient(ellipse 80% 45% at 50% 100%, rgba(108, 157, 198, 0.07), transparent 70%);
+}
+
+[data-mode="morning"] .panel-surface {
+  background-color: #101722;
+  border-color: #243049;
+}
+[data-mode="morning"].panel-arrive {
+  animation-duration: 700ms;
+}
+[data-mode="morning"] .panel-sweep {
+  animation-duration: 900ms;
+}
+
+[data-mode="day"].panel-arrive {
+  animation-duration: 120ms;
+}
+[data-mode="day"] .panel-scanline {
+  display: none;
+}
+
+[data-mode="night"] .panel-surface {
+  background-color: #080A0E;
+}
+[data-mode="night"].panel-arrive {
+  animation-name: panel-arrive-reduced;
+  animation-duration: 1100ms;
+}
+[data-mode="night"] .corner-breathe {
+  animation: none;
+  opacity: 0.2;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .corner-breathe {
     animation: none;

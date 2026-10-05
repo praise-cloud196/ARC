@@ -1,6 +1,7 @@
 import { CommitmentRow, type CommitmentRowData } from "./CommitmentRow";
 import { Panel } from "./Panel";
 import { CarryOverPrompt } from "./CarryOverPrompt";
+import { ModeGlow } from "./ModeGlow";
 
 /**
  * Day (docs/design-revision-v1.md §7): commitment rows inside a panel.
@@ -20,7 +21,9 @@ export function DayScreen({
 }) {
   return (
     <main className="px-6 py-16">
+      <ModeGlow mode="day" />
       <Panel
+        mode="day"
         ambient
         header={<div className="text-ink-faint text-center font-mono text-[10px] uppercase tracking-[0.2em]">Today</div>}
       >

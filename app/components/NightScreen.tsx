@@ -2,6 +2,7 @@ import { BracketedAnnouncement } from "./BracketedAnnouncement";
 import { Panel } from "./Panel";
 import { SystemVoice } from "./SystemVoice";
 import { CommitmentRow } from "./CommitmentRow";
+import { ModeGlow } from "./ModeGlow";
 import type { TodaysCommitmentRow } from "@/lib/loop";
 
 /**
@@ -24,7 +25,8 @@ import type { TodaysCommitmentRow } from "@/lib/loop";
 export function NightScreen({ lines, todaysCommitments }: { lines: string[]; todaysCommitments?: TodaysCommitmentRow[] }) {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-8 px-6 py-16">
-      <Panel ambient header={<BracketedAnnouncement>System Report</BracketedAnnouncement>}>
+      <ModeGlow mode="night" />
+      <Panel mode="night" ambient header={<BracketedAnnouncement>System Report</BracketedAnnouncement>}>
         <div className="space-y-3 text-center">
           {lines.map((line, i) => (
             <SystemVoice

@@ -58,17 +58,21 @@ export function Panel({
   className = "",
   size = "loop",
   ambient = false,
+  mode,
 }: {
   header: ReactNode;
   children: ReactNode;
   className?: string;
   size?: "loop" | "wide";
   ambient?: boolean;
+  /** Today's three states look different (globals.css, `[data-mode]`): tint, arrival speed, corner marks. */
+  mode?: "morning" | "day" | "night";
 }) {
   const cornerClass = ambient ? "corner-breathe border-accent" : "border-accent/40";
 
   return (
     <div
+      data-mode={mode}
       className={`panel-arrive relative mx-auto w-full ${MAX_WIDTH[size]} [view-transition-name:panel-transition] ${className}`}
     >
       {/* Corner marks (v1 §4): 12px L-brackets, accent at 40% (25% when
@@ -78,7 +82,7 @@ export function Panel({
       <span className={`${cornerClass} pointer-events-none absolute -bottom-1.5 -left-1.5 h-3 w-3 border-b border-l`} />
       <span className={`${cornerClass} pointer-events-none absolute -bottom-1.5 -right-1.5 h-3 w-3 border-b border-r`} />
 
-      <div className="border-border bg-panel rounded-sm border">
+      <div className="panel-surface border-border bg-panel rounded-sm border">
         <div className="border-border relative overflow-hidden border-b px-6 py-3">
           {header}
           <span className="panel-sweep bg-accent absolute bottom-0 left-0 h-px w-full" />
