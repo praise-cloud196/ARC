@@ -15,10 +15,11 @@ function requireString(formData: FormData, key: string): string {
 }
 
 /** One-tap carry-over of last week's commitments into the current week. */
-export async function submitCarryOver(): Promise<void> {
+export async function submitCarryOver(formData: FormData): Promise<void> {
   const weekStart = startOfWeek(computeLogicalDay(new Date(), getTimezone()));
   await withTransaction((client) => carryOverCommitments(client, weekStart));
-  redirect("/commitments");
+  // Offered from Today as well as Commitments; return to wherever it was tapped.
+  redirect(formData.get("next") === "/" ? "/" : "/commitments");
 }
 
 export async function submitDeclareCommitment(formData: FormData): Promise<void> {

@@ -2,6 +2,7 @@ import { Panel } from "./Panel";
 import { SystemVoice } from "./SystemVoice";
 import { ProbeResolutionCard } from "./ProbeResolutionCard";
 import { ClampText } from "./ClampText";
+import { CarryOverPrompt } from "./CarryOverPrompt";
 import type { MorningScreenData } from "@/lib/loop";
 
 /**
@@ -26,7 +27,7 @@ import type { MorningScreenData } from "@/lib/loop";
  * today.", no closing line since something *is* required) rather than
  * inventing an unrelated layout.
  */
-export function MorningScreen({ data }: { data: MorningScreenData }) {
+export function MorningScreen({ data, carryableLabels = [] }: { data: MorningScreenData; carryableLabels?: string[] }) {
   const { identity, momentum, seasonNumber, dayNumber, mainQuest, todaysCommitments, probesAwaitingResolution } = data;
   const hasCommitments = todaysCommitments.length > 0;
   const dayLine =
@@ -82,6 +83,8 @@ export function MorningScreen({ data }: { data: MorningScreenData }) {
           <SystemVoice as="div" size="base" className="text-ink-muted">
             Momentum: {momentum.state}
           </SystemVoice>
+
+          {!hasCommitments && <CarryOverPrompt labels={carryableLabels} />}
 
           {!hasCommitments && <p className="font-sans text-ink-muted mt-4 text-[14px]">Nothing is required of you today.</p>}
         </div>

@@ -1,4 +1,8 @@
 import { redirect } from "next/navigation";
+import type { PoolClient } from "pg";
+import { getCommitmentsForWeek, listCarryableCommitments } from "@/lib/commitments";
+import { startOfWeek } from "@/lib/day-math";
+import { computeLogicalDay, getTimezone } from "@/lib/logical-day";
 import { withReadTransaction, withTransaction } from "@/lib/with-transaction";
 import {
   determineLoopState,
@@ -31,6 +35,13 @@ export const dynamic = "force-dynamic";
 // was removed and this page went back to blocking fully before
 // responding, however long that takes). Blocking here is correct, not a
 // perf bug to fix — see globals.css's screen-transition comment.
+/** Labels of last week's commitments that can be copied into this week — only when this week has none declared yet. */
+async function carryableLabelsFor(client: PoolClient, now: Date): Promise<string[]> {
+  const weekStart = startOfWeek(computeLogicalDay(now, getTimezone()));
+  if ((await getCommitmentsForWeek(client, weekStart)).length > 0) return [];
+  return (await listCarryableCommitments(client, weekStart)).map((c) => c.label);
+}
+
 export default async function TodayPage() {
   const auditCompleted = await withReadTransaction(async (client) => {
     const result = await client.query(`SELECT 1 FROM events WHERE type = 'audit.completed' LIMIT 1`);
@@ -48,8 +59,11 @@ export default async function TodayPage() {
   await withTransaction((client) => recordAppOpened(client, now));
 
   if (state === "morning") {
-    const data = await withReadTransaction((client) => computeMorningScreenData(client, now));
-    return <MorningScreen data={data} />;
+    const { data, carryableLabels } = await withReadTransaction(async (client) => ({
+      data: await computeMorningScreenData(client, now),
+      carryableLabels: await carryableLabelsFor(client, now),
+    }));
+    return <MorningScreen data={data} carryableLabels={carryableLabels} />;
   }
 
   if (state === "night") {
@@ -64,10 +78,11 @@ export default async function TodayPage() {
     return <NightScreen lines={lines} todaysCommitments={todaysCommitments} />;
   }
 
-  const { commitments, lastMarkDay } = await withReadTransaction(async (client) => ({
+  const { commitments, lastMarkDay, carryableLabels } = await withReadTransaction(async (client) => ({
     commitments: (await computeTodaysCommitmentRows(client, now)) as CommitmentRowData[],
     lastMarkDay: (await listRecentMarks(client, 1))[0]?.logicalDay ?? null,
+    carryableLabels: await carryableLabelsFor(client, now),
   }));
 
-  return <DayScreen commitments={commitments} lastMarkDay={lastMarkDay} />;
+  return <DayScreen commitments={commitments} lastMarkDay={lastMarkDay} carryableLabels={carryableLabels} />;
 }

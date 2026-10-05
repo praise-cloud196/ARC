@@ -59,6 +59,7 @@ export default async function CommitmentsPage() {
 
         {carryable.length > 0 && (
           <form action={submitCarryOver} className="mx-auto mb-6 max-w-md text-center">
+            <input type="hidden" name="next" value="/commitments" />
             <button type="submit" className="ia border border-accent-dim px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-accent">
               Copy last week ({carryable.length})
             </button>

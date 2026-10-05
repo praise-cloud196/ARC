@@ -96,6 +96,14 @@ export async function declareCommitment(client: Queryable, input: DeclareCommitm
   return mapRow(row);
 }
 
+/** Last week's commitments not yet declared (same domain and label) for the week starting `weekStart`. */
+export async function listCarryableCommitments(client: Queryable, weekStart: string): Promise<Commitment[]> {
+  const previous = await getCommitmentsForWeek(client, addDays(weekStart, -7));
+  const current = await getCommitmentsForWeek(client, weekStart);
+  const existing = new Set(current.map((c) => `${c.domain}|${c.label}`));
+  return previous.filter((c) => !existing.has(`${c.domain}|${c.label}`));
+}
+
 /**
  * Declares last week's commitments again for the week starting `weekStart`
  * (domain, label, tier, target copied as-is). Any already declared this week
@@ -103,13 +111,10 @@ export async function declareCommitment(client: Queryable, input: DeclareCommitm
  * Returns the commitments newly declared.
  */
 export async function carryOverCommitments(client: Queryable, weekStart: string): Promise<Commitment[]> {
-  const previous = await getCommitmentsForWeek(client, addDays(weekStart, -7));
-  const current = await getCommitmentsForWeek(client, weekStart);
-  const existing = new Set(current.map((c) => `${c.domain}|${c.label}`));
+  const carryable = await listCarryableCommitments(client, weekStart);
 
   const created: Commitment[] = [];
-  for (const c of previous) {
-    if (existing.has(`${c.domain}|${c.label}`)) continue;
+  for (const c of carryable) {
     created.push(
       await declareCommitment(client, {
         domain: c.domain,
