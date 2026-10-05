@@ -4,6 +4,7 @@ import { DOMAINS } from "@/lib/domains";
 import { Panel } from "@/app/components/Panel";
 import { Grid, GridCell, orphanSpanClass } from "@/app/components/GridCell";
 import { SystemVoice } from "@/app/components/SystemVoice";
+import { ClampText } from "@/app/components/ClampText";
 import { submitNote, submitEditNote, submitVoidNote } from "./actions";
 
 /**
@@ -97,7 +98,7 @@ export default async function NotesPage({
                 </GridCell>
               ) : (
                 <GridCell key={note.id} className={orphanSpanClass(i, recent.length)}>
-                  <p className="font-sans text-ink text-[15px] leading-relaxed">{note.note}</p>
+                  <ClampText className="font-sans text-ink text-[15px] leading-relaxed">{note.note}</ClampText>
                   <p className="text-ink-faint mt-1 font-mono text-xs">
                     {note.domain}, {note.logicalDay}
                     {note.voided ? ", withdrawn" : ""}

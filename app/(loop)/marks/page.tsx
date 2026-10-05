@@ -4,6 +4,7 @@ import { DOMAINS } from "@/lib/domains";
 import { Panel } from "@/app/components/Panel";
 import { Grid, GridCell, orphanSpanClass } from "@/app/components/GridCell";
 import { SystemVoice } from "@/app/components/SystemVoice";
+import { ClampText } from "@/app/components/ClampText";
 import { submitMark, submitEditMark, submitVoidMark } from "./actions";
 
 /**
@@ -126,7 +127,7 @@ export default async function MarksPage({
                 </GridCell>
               ) : (
                 <GridCell key={mark.id} className={orphanSpanClass(i, recent.length)}>
-                  <p className="font-sans text-ink text-[15px] leading-relaxed">{mark.note}</p>
+                  <ClampText className="font-sans text-ink text-[15px] leading-relaxed">{mark.note}</ClampText>
                   {mark.reference && (
                     <p className="mt-1">
                       <a href={mark.reference.url} className="ia-link font-sans text-sm" target="_blank" rel="noreferrer">

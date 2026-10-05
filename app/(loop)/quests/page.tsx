@@ -6,6 +6,7 @@ import { Panel } from "@/app/components/Panel";
 import { Grid, GridCell, orphanSpanClass } from "@/app/components/GridCell";
 import { SystemVoice } from "@/app/components/SystemVoice";
 import { BackLink } from "@/app/components/BackLink";
+import { ClampText } from "@/app/components/ClampText";
 import { ProbeResolutionCard } from "@/app/components/ProbeResolutionCard";
 import {
   submitAbandonQuest,
@@ -92,7 +93,7 @@ export default async function QuestsPage() {
             <Grid>
               {undertakings.map((u, i) => (
                 <GridCell key={u.id} className={orphanSpanClass(i, undertakings.length)}>
-                  <p className="font-sans text-ink text-[15px] leading-relaxed">{u.statement}</p>
+                  <ClampText className="font-sans text-ink text-[15px] leading-relaxed">{u.statement}</ClampText>
                   <p className="text-ink-faint mt-1 font-mono text-xs">
                     {u.status} &middot; {u.stepCount} step{u.stepCount === 1 ? "" : "s"}
                   </p>
@@ -192,7 +193,7 @@ export default async function QuestsPage() {
                   <ProbeResolutionCard key={p.id} probe={p} />
                 ) : (
                   <GridCell key={p.id}>
-                    <p className="font-sans text-ink text-[15px] leading-relaxed">{p.statement}</p>
+                    <ClampText className="font-sans text-ink text-[15px] leading-relaxed">{p.statement}</ClampText>
                     <p className="text-ink-faint mt-1 font-mono text-xs">
                       {p.status} &middot; decision {p.decisionDate} &middot; signal: {p.signal}
                     </p>
@@ -214,7 +215,7 @@ export default async function QuestsPage() {
             <div className="space-y-4">
               {outcomes.map((o) => (
                 <GridCell key={o.id}>
-                  <p className="font-sans text-ink text-[15px] leading-relaxed">{o.statement}</p>
+                  <ClampText className="font-sans text-ink text-[15px] leading-relaxed">{o.statement}</ClampText>
                   <p className="text-ink-faint mt-1 font-mono text-xs">{o.status}</p>
 
                   {o.status === "active" && (

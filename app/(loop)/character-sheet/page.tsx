@@ -5,6 +5,7 @@ import { SCORED_DOMAINS } from "@/lib/domains";
 import { Panel } from "@/app/components/Panel";
 import { GridCell } from "@/app/components/GridCell";
 import { SystemVoice } from "@/app/components/SystemVoice";
+import { ClampText } from "@/app/components/ClampText";
 
 // Reads live DB state on every load — see app/page.tsx's comment on this
 // same line for why it has to be forced (a raw `pg` query doesn't trip
@@ -69,7 +70,7 @@ export default async function CharacterSheetPage() {
                         instead of the plain default, which renders these at
                         browser-default leading (~1.15) and reads dense on a
                         phone. */}
-                    <p className="font-sans text-ink text-[15px] leading-relaxed">{outcome.statement}</p>
+                    <ClampText className="font-sans text-ink text-[15px] leading-relaxed">{outcome.statement}</ClampText>
                   </GridCell>
                 ))}
               </div>
