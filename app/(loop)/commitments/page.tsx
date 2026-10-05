@@ -1,11 +1,11 @@
 import { withReadTransaction } from "@/lib/with-transaction";
 import { getCommitmentsForWeek } from "@/lib/commitments";
-import { startOfWeek } from "@/lib/day-math";
+import { addDays, startOfWeek } from "@/lib/day-math";
 import { computeLogicalDay, getTimezone } from "@/lib/logical-day";
 import { Panel } from "@/app/components/Panel";
 import { Grid, GridCell, orphanSpanClass } from "@/app/components/GridCell";
 import { SystemVoice } from "@/app/components/SystemVoice";
-import { submitDeclareCommitment } from "./actions";
+import { submitCarryOver, submitDeclareCommitment } from "./actions";
 
 /**
  * Weekly commitment declaration (milestone-4-spec.md §0.1/§3). Functional,
@@ -28,7 +28,11 @@ export const dynamic = "force-dynamic";
 
 export default async function CommitmentsPage() {
   const weekStart = startOfWeek(computeLogicalDay(new Date(), getTimezone()));
-  const existing = await withReadTransaction((client) => getCommitmentsForWeek(client, weekStart));
+  const { existing, lastWeek } = await withReadTransaction(async (client) => ({
+    existing: await getCommitmentsForWeek(client, weekStart),
+    lastWeek: await getCommitmentsForWeek(client, addDays(weekStart, -7)),
+  }));
+  const carryable = lastWeek.filter((l) => !existing.some((e) => e.domain === l.domain && e.label === l.label));
 
   return (
     <main className="px-6 py-12">
@@ -51,6 +55,17 @@ export default async function CommitmentsPage() {
               </GridCell>
             ))}
           </Grid>
+        )}
+
+        {carryable.length > 0 && (
+          <form action={submitCarryOver} className="mx-auto mb-6 max-w-md text-center">
+            <button type="submit" className="ia border border-accent-dim px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-accent">
+              Copy last week ({carryable.length})
+            </button>
+            <p className="text-ink-faint mt-2 text-xs">
+              {carryable.map((c) => c.label).join(", ")}
+            </p>
+          </form>
         )}
 
         <form action={submitDeclareCommitment} className="mx-auto max-w-md space-y-4 border border-border p-4">

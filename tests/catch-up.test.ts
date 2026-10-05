@@ -5,7 +5,7 @@
  */
 import { afterAll, describe, expect, it } from "vitest";
 import { getPool } from "../lib/db";
-import { completeCommitment, countCompletions, declareCommitment, voidCommitmentCompletion } from "../lib/commitments";
+import { carryOverCommitments, completeCommitment, countCompletions, declareCommitment, voidCommitmentCompletion } from "../lib/commitments";
 import { computeLogicalDay, getTimezone, instantInLogicalDay } from "../lib/logical-day";
 import { addDays, startOfWeek } from "../lib/day-math";
 import { CATCHUP_WINDOW_DAYS } from "../lib/calibration";
@@ -84,6 +84,31 @@ describe.skipIf(!hasDb)("Catch-up logging", () => {
 
       await voidCommitmentCompletion(client, { completionEventId: event.id });
       expect(await countCompletions(client, c.id)).toBe(0);
+
+      await client.query("ROLLBACK");
+    } finally {
+      await client.query("ROLLBACK").catch(() => {});
+      client.release();
+    }
+  });
+});
+
+describe.skipIf(!hasDb)("Carry-over", () => {
+  it("copies last week's commitments once, and is safe to run twice", async () => {
+    const client = await getPool().connect();
+    try {
+      await client.query("BEGIN");
+      const thisWeek = startOfWeek(computeLogicalDay(new Date()));
+      const lastWeek = addDays(thisWeek, -7);
+      await declareCommitment(client, { domain: "body", label: "Train", tier: 2, weeklyTarget: 4, weekStart: lastWeek });
+      await declareCommitment(client, { domain: "career", label: "Outbound", tier: 1, weeklyTarget: 3, weekStart: lastWeek });
+
+      const first = await carryOverCommitments(client, thisWeek);
+      expect(first).toHaveLength(2);
+      expect(first.find((c) => c.label === "Train")).toMatchObject({ tier: 2, weeklyTarget: 4, weekStart: thisWeek });
+
+      const second = await carryOverCommitments(client, thisWeek);
+      expect(second).toHaveLength(0);
 
       await client.query("ROLLBACK");
     } finally {

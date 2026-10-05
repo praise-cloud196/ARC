@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { withTransaction } from "@/lib/with-transaction";
-import { declareCommitment, type CommitmentDomain } from "@/lib/commitments";
+import { carryOverCommitments, declareCommitment, type CommitmentDomain } from "@/lib/commitments";
 import { startOfWeek } from "@/lib/day-math";
 import { computeLogicalDay, getTimezone } from "@/lib/logical-day";
 
@@ -12,6 +12,13 @@ function requireString(formData: FormData, key: string): string {
     throw new Error(`${key} is required.`);
   }
   return value.trim();
+}
+
+/** One-tap carry-over of last week's commitments into the current week. */
+export async function submitCarryOver(): Promise<void> {
+  const weekStart = startOfWeek(computeLogicalDay(new Date(), getTimezone()));
+  await withTransaction((client) => carryOverCommitments(client, weekStart));
+  redirect("/commitments");
 }
 
 export async function submitDeclareCommitment(formData: FormData): Promise<void> {

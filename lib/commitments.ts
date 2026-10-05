@@ -96,6 +96,33 @@ export async function declareCommitment(client: Queryable, input: DeclareCommitm
   return mapRow(row);
 }
 
+/**
+ * Declares last week's commitments again for the week starting `weekStart`
+ * (domain, label, tier, target copied as-is). Any already declared this week
+ * with the same domain and label are skipped, so it is safe to run twice.
+ * Returns the commitments newly declared.
+ */
+export async function carryOverCommitments(client: Queryable, weekStart: string): Promise<Commitment[]> {
+  const previous = await getCommitmentsForWeek(client, addDays(weekStart, -7));
+  const current = await getCommitmentsForWeek(client, weekStart);
+  const existing = new Set(current.map((c) => `${c.domain}|${c.label}`));
+
+  const created: Commitment[] = [];
+  for (const c of previous) {
+    if (existing.has(`${c.domain}|${c.label}`)) continue;
+    created.push(
+      await declareCommitment(client, {
+        domain: c.domain,
+        label: c.label,
+        tier: c.tier,
+        weeklyTarget: c.weeklyTarget,
+        weekStart,
+      })
+    );
+  }
+  return created;
+}
+
 /** Every commitment declared for the week starting `weekStart`. */
 export async function getCommitmentsForWeek(client: Queryable, weekStart: string): Promise<Commitment[]> {
   const result = await client.query<CommitmentRow>(
