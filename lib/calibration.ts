@@ -23,6 +23,17 @@
  */
 export const LOGICAL_DAY_BOUNDARY_HOUR = 6;
 
+/**
+ * Catch-up logging: how many logical days back (not counting today) a
+ * commitment completion can still be logged or withdrawn. The record keeps
+ * both when it happened (occurred_at) and when it was entered (recorded_at),
+ * so a late entry stays honest. Beyond this window the day is closed.
+ */
+export const CATCHUP_WINDOW_DAYS = 3;
+
+/** Local hour a late-logged completion is placed at within its logical day (the real time is unknown). */
+export const CATCHUP_OCCURRED_AT_HOUR = 12;
+
 // --- XP (PRD-v1.0.md §10) — PROVISIONAL ------------------------------------
 
 export const XP_TIER_VALUES = {

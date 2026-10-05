@@ -9,8 +9,8 @@
  */
 import type { Pool, PoolClient } from "pg";
 import { appendCorrection, appendEvent, type AppendedEvent } from "./events";
-import { computeLogicalDay, getTimezone } from "./logical-day";
-import { addDays, startOfWeek } from "./day-math";
+import { computeLogicalDay, getTimezone, instantInLogicalDay } from "./logical-day";
+import { addDays, daysBetween, startOfWeek } from "./day-math";
 import type { Domain } from "./domains";
 import {
   computeMomentum,
@@ -19,7 +19,7 @@ import {
   type MomentumCompletion,
   type MomentumResult,
 } from "./momentum";
-import { MOMENTUM_WINDOW_DAYS } from "./calibration";
+import { CATCHUP_WINDOW_DAYS, MOMENTUM_WINDOW_DAYS } from "./calibration";
 
 type Queryable = Pool | PoolClient;
 
@@ -109,6 +109,12 @@ export async function getCommitmentsForWeek(client: Queryable, weekStart: string
 export interface CompleteCommitmentInput {
   commitmentId: string;
   occurredAt?: Date;
+  /**
+   * Catch-up logging: the logical day this completion belongs to, when it
+   * isn't today. Must fall inside the commitment's own week and within
+   * CATCHUP_WINDOW_DAYS before today. Ignored if `occurredAt` is given.
+   */
+  logicalDay?: string;
   timezone?: string;
 }
 
@@ -120,20 +126,36 @@ export interface CompleteCommitmentInput {
  * patched in afterward via `patchCommitmentCompletion`.
  */
 export async function completeCommitment(client: Queryable, input: CompleteCommitmentInput): Promise<AppendedEvent> {
-  const commitmentResult = await client.query<{ domain: CommitmentDomain; tier: 1 | 2 | 3 }>(
-    `SELECT domain, tier FROM commitments WHERE id = $1`,
-    [input.commitmentId]
-  );
+  const commitmentResult = await client.query<{
+    domain: CommitmentDomain;
+    tier: 1 | 2 | 3;
+    active_from: string;
+    active_until: string | null;
+  }>(`SELECT domain, tier, active_from, active_until FROM commitments WHERE id = $1`, [input.commitmentId]);
   const commitment = commitmentResult.rows[0];
   if (!commitment) throw new Error(`No commitment found with id ${input.commitmentId}`);
 
+  const timezone = input.timezone ?? getTimezone();
+  let occurredAt = input.occurredAt ?? new Date();
+  if (input.occurredAt === undefined && input.logicalDay !== undefined) {
+    const today = computeLogicalDay(new Date(), timezone);
+    const daysBack = daysBetween(input.logicalDay, today);
+    if (daysBack < 0 || daysBack > CATCHUP_WINDOW_DAYS) {
+      throw new Error("That day is outside the catch-up window.");
+    }
+    if (input.logicalDay < commitment.active_from || (commitment.active_until && input.logicalDay > commitment.active_until)) {
+      throw new Error("That day is outside this commitment's week.");
+    }
+    occurredAt = instantInLogicalDay(input.logicalDay, timezone);
+  }
+
   return appendEvent(client, {
     type: "commitment.completed",
-    occurredAt: input.occurredAt ?? new Date(),
+    occurredAt,
     domain: commitment.domain,
     subjectId: input.commitmentId,
     payload: { tier: commitment.tier },
-    timezone: input.timezone ?? getTimezone(),
+    timezone,
   });
 }
 
@@ -205,8 +227,10 @@ export async function voidCommitmentCompletion(
   const timezone = input.timezone ?? getTimezone();
   const now = input.occurredAt ?? new Date();
   const today = computeLogicalDay(now, timezone);
-  if (originalRow.logical_day !== today) {
-    throw new Error("A completion can only be undone on the day it happened.");
+  // Catch-up logging: a completion can be withdrawn while its day is still
+  // inside the catch-up window (today counts as day 0).
+  if (daysBetween(originalRow.logical_day, today) > CATCHUP_WINDOW_DAYS) {
+    throw new Error("A completion can only be undone while its day is within the catch-up window.");
   }
 
   return appendCorrection(client, {

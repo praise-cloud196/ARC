@@ -30,14 +30,14 @@ const RESISTANCE_OPTIONS: { value: "easy" | "normal" | "against_resistance"; lab
  * fetches). Voiding returns the row to its pre-completion state so the
  * commitment can be completed for real if that's what actually happened.
  */
-export function CommitmentRow({ commitment }: { commitment: CommitmentRowData }) {
+export function CommitmentRow({ commitment, logicalDay }: { commitment: CommitmentRowData; logicalDay?: string }) {
   const [state, setState] = useState(commitment);
   const [showNote, setShowNote] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const handleComplete = () => {
     startTransition(async () => {
-      const eventId = await completeCommitmentAction(state.id);
+      const eventId = await completeCommitmentAction(state.id, logicalDay);
       setState((s) => ({ ...s, completionEventId: eventId }));
     });
   };

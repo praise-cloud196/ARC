@@ -11,9 +11,10 @@ import {
 import { resolveProbe, type ProbeResolutionAction } from "@/lib/quests";
 
 /** Returns the new completion event's id, for CommitmentRow to patch afterward. */
-export async function completeCommitmentAction(commitmentId: string): Promise<string> {
-  const event = await withTransaction((client) => completeCommitment(client, { commitmentId }));
+export async function completeCommitmentAction(commitmentId: string, logicalDay?: string): Promise<string> {
+  const event = await withTransaction((client) => completeCommitment(client, { commitmentId, logicalDay }));
   revalidatePath("/");
+  revalidatePath("/catch-up");
   return event.id;
 }
 
@@ -29,6 +30,7 @@ export async function patchCommitmentAction(
 export async function voidCommitmentAction(completionEventId: string): Promise<void> {
   await withTransaction((client) => voidCommitmentCompletion(client, { completionEventId }));
   revalidatePath("/");
+  revalidatePath("/catch-up");
 }
 
 /**

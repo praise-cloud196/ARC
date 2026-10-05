@@ -26,6 +26,7 @@
 const LINKS = [
   { href: "/", label: "Today" },
   { href: "/character-sheet", label: "Character Sheet" },
+  { href: "/catch-up", label: "Earlier" },
   { href: "/commitments", label: "Commitments" },
 ] as const;
 

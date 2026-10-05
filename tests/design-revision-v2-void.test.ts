@@ -71,10 +71,11 @@ describe.skipIf(!hasDb)("Voiding a completion (design-revision-v2.md §7)", () =
       const completedAt = new Date(`${weekStart}T10:00:00-05:00`);
       const completion = await completeCommitment(client, { commitmentId: commitment.id, occurredAt: completedAt });
 
-      const twoDaysLater = new Date(completedAt.getTime() + 2 * 86400000);
+      // Past the catch-up window (CATCHUP_WINDOW_DAYS = 3).
+      const tenDaysLater = new Date(completedAt.getTime() + 10 * 86400000);
       await expect(
-        voidCommitmentCompletion(client, { completionEventId: completion.id, occurredAt: twoDaysLater })
-      ).rejects.toThrow(/only be undone on the day it happened/);
+        voidCommitmentCompletion(client, { completionEventId: completion.id, occurredAt: tenDaysLater })
+      ).rejects.toThrow(/within the catch-up window/);
 
       await client.query("ROLLBACK");
     } finally {

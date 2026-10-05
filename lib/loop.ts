@@ -314,8 +314,11 @@ export interface TodaysCommitmentRow {
  * logic in sync.
  */
 export async function computeTodaysCommitmentRows(client: PoolClient, now: Date = new Date()): Promise<TodaysCommitmentRow[]> {
-  const timezone = getTimezone();
-  const today = computeLogicalDay(now, timezone);
+  return computeCommitmentRowsForDay(client, computeLogicalDay(now, getTimezone()));
+}
+
+/** Commitment rows for any one logical day — Today's, or a catch-up day's (/catch-up). */
+export async function computeCommitmentRowsForDay(client: PoolClient, today: string): Promise<TodaysCommitmentRow[]> {
   const weekStart = startOfWeek(today);
   const weekCommitments = await getCommitmentsForWeek(client, weekStart);
 

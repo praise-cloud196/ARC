@@ -8,7 +8,7 @@
  * than fixed clock semantics (AGENTS.md hard rule 4,
  * milestone-1.1-fixes.md item 5).
  */
-import { LOGICAL_DAY_BOUNDARY_HOUR } from "./calibration";
+import { CATCHUP_OCCURRED_AT_HOUR, LOGICAL_DAY_BOUNDARY_HOUR } from "./calibration";
 
 /**
  * The configured timezone. Throws if unset rather than guessing — a wrong
@@ -42,6 +42,28 @@ export function getDisplayHour(): number {
     throw new Error(`ARC_DISPLAY_HOUR must be an integer 0-23; got ${raw}`);
   }
   return hour;
+}
+
+/**
+ * An instant that falls inside logical day `day` ('YYYY-MM-DD'): local
+ * CATCHUP_OCCURRED_AT_HOUR in `timeZone`. Used to place a late-logged
+ * completion on the day it belongs to.
+ */
+export function instantInLogicalDay(day: string, timeZone: string = getTimezone()): Date {
+  const [y, m, d] = day.split("-").map(Number) as [number, number, number];
+  const target = Date.UTC(y, m - 1, d, CATCHUP_OCCURRED_AT_HOUR);
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date(target));
+  const get = (type: string): number => Number(parts.find((p) => p.type === type)?.value);
+  const hour = get("hour") === 24 ? 0 : get("hour");
+  const localAsUtc = Date.UTC(get("year"), get("month") - 1, get("day"), hour);
+  return new Date(target + (target - localAsUtc));
 }
 
 /** Returns the logical day for `occurredAt` as a 'YYYY-MM-DD' string. */
