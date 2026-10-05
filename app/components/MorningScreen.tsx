@@ -1,6 +1,7 @@
 import { Panel } from "./Panel";
 import { SystemVoice } from "./SystemVoice";
 import { ProbeResolutionCard } from "./ProbeResolutionCard";
+import { ClampText } from "./ClampText";
 import type { MorningScreenData } from "@/lib/loop";
 
 /**
@@ -70,12 +71,12 @@ export function MorningScreen({ data }: { data: MorningScreenData }) {
             // ambient text-center and gives the statement itself room to
             // breathe, while the "Main Quest" label stays in the system
             // voice's usual size/tracking.
-            <SystemVoice as="div" size="base" className="text-ink-muted text-left">
-              Main Quest —{" "}
-              <span className="font-sans normal-case tracking-normal text-ink text-[15px] leading-relaxed">
-                {mainQuest}
-              </span>
-            </SystemVoice>
+            <div className="border-border mt-2 space-y-2 border-t pt-4 text-left">
+              <SystemVoice as="div" size="sm" className="text-ink-faint">
+                Main Quest
+              </SystemVoice>
+              <ClampText className="font-sans text-ink-muted text-[15px] leading-relaxed">{mainQuest}</ClampText>
+            </div>
           )}
 
           <SystemVoice as="div" size="base" className="text-ink-muted">
