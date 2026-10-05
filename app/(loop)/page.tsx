@@ -7,6 +7,7 @@ import {
   computeTonightsReport,
   computeTodaysCommitmentRows,
 } from "@/lib/loop";
+import { listRecentMarks } from "@/lib/marks";
 import { MorningScreen } from "@/app/components/MorningScreen";
 import { DayScreen } from "@/app/components/DayScreen";
 import { NightScreen } from "@/app/components/NightScreen";
@@ -63,7 +64,10 @@ export default async function TodayPage() {
     return <NightScreen lines={lines} todaysCommitments={todaysCommitments} />;
   }
 
-  const commitments: CommitmentRowData[] = await withReadTransaction((client) => computeTodaysCommitmentRows(client, now));
+  const { commitments, lastMarkDay } = await withReadTransaction(async (client) => ({
+    commitments: (await computeTodaysCommitmentRows(client, now)) as CommitmentRowData[],
+    lastMarkDay: (await listRecentMarks(client, 1))[0]?.logicalDay ?? null,
+  }));
 
-  return <DayScreen commitments={commitments} />;
+  return <DayScreen commitments={commitments} lastMarkDay={lastMarkDay} />;
 }

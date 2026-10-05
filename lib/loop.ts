@@ -15,7 +15,7 @@ import { appendEvent } from "./events";
 import { computeLogicalDay, getDisplayHour, getTimezone } from "./logical-day";
 import { addDays, daysBetweenInclusive, startOfWeek } from "./day-math";
 import { computeIdentity, type Identity } from "./identity";
-import { computeCurrentMomentum, getCommitmentsForWeek, type Commitment } from "./commitments";
+import { computeCurrentMomentum, countCompletions, getCommitmentsForWeek, type Commitment } from "./commitments";
 import { listProbesAwaitingResolution, type Probe } from "./quests";
 import type { MomentumResult } from "./momentum";
 import { resolveEffectiveEvents, type RawEventRow } from "./effective-events";
@@ -304,6 +304,9 @@ export interface TodaysCommitmentRow {
   label: string;
   completionEventId: string | null;
   resistance: string | null;
+  /** Completions so far this week, and the week's target — shown as "2/4". */
+  weekCount: number;
+  weeklyTarget: number;
 }
 
 /**
@@ -341,7 +344,9 @@ export async function computeCommitmentRowsForDay(client: PoolClient, today: str
     todaysRows.rows.filter((r) => r.type === "commitment.completed").map((r) => [r.subject_id, r.id])
   );
 
-  return weekCommitments.map((c) => {
+  const weekCounts = await Promise.all(weekCommitments.map((c) => countCompletions(client, c.id)));
+
+  return weekCommitments.map((c, i) => {
     const originalId = originalIdByCommitmentId.get(c.id);
     const completion = originalId ? effectiveById.get(originalId) : undefined;
     // A voided completion (design-revision-v2.md §7) reads as not
@@ -355,6 +360,8 @@ export async function computeCommitmentRowsForDay(client: PoolClient, today: str
       label: c.label,
       completionEventId: voided ? null : (originalId ?? null),
       resistance: voided || typeof resistance !== "string" ? null : resistance,
+      weekCount: weekCounts[i] ?? 0,
+      weeklyTarget: c.weeklyTarget,
     };
   });
 }

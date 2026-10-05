@@ -8,7 +8,7 @@ import { Panel } from "./Panel";
  * (milestone-4-spec.md §5). Not vertically centred like Morning/Night —
  * this is a list, and can run longer than one screen.
  */
-export function DayScreen({ commitments }: { commitments: CommitmentRowData[] }) {
+export function DayScreen({ commitments, lastMarkDay }: { commitments: CommitmentRowData[]; lastMarkDay?: string | null }) {
   return (
     <main className="px-6 py-16">
       <Panel
@@ -24,6 +24,7 @@ export function DayScreen({ commitments }: { commitments: CommitmentRowData[] })
             ))}
           </div>
         )}
+        {lastMarkDay && <p className="text-ink-faint mt-4 font-mono text-xs">Last Mark: {lastMarkDay}</p>}
       </Panel>
     </main>
   );

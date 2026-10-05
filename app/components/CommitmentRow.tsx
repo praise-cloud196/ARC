@@ -9,6 +9,8 @@ export interface CommitmentRowData {
   label: string;
   completionEventId: string | null;
   resistance: string | null;
+  weekCount: number;
+  weeklyTarget: number;
 }
 
 const RESISTANCE_OPTIONS: { value: "easy" | "normal" | "against_resistance"; label: string }[] = [
@@ -38,7 +40,7 @@ export function CommitmentRow({ commitment, logicalDay }: { commitment: Commitme
   const handleComplete = () => {
     startTransition(async () => {
       const eventId = await completeCommitmentAction(state.id, logicalDay);
-      setState((s) => ({ ...s, completionEventId: eventId }));
+      setState((s) => ({ ...s, completionEventId: eventId, weekCount: s.weekCount + 1 }));
     });
   };
 
@@ -59,7 +61,7 @@ export function CommitmentRow({ commitment, logicalDay }: { commitment: Commitme
     if (!state.completionEventId) return;
     startTransition(async () => {
       await voidCommitmentAction(state.completionEventId as string);
-      setState((s) => ({ ...s, completionEventId: null, resistance: null }));
+      setState((s) => ({ ...s, completionEventId: null, resistance: null, weekCount: Math.max(0, s.weekCount - 1) }));
       setShowNote(false);
     });
   };
@@ -67,7 +69,12 @@ export function CommitmentRow({ commitment, logicalDay }: { commitment: Commitme
   return (
     <div className="border-b border-border py-4">
       <div className="flex items-center justify-between gap-4">
-        <span className="font-sans text-ink text-base">{state.label}</span>
+        <span>
+          <span className="font-sans text-ink block text-base">{state.label}</span>
+          <span className="text-ink-faint font-mono text-xs">
+            {state.weekCount}/{state.weeklyTarget} this week
+          </span>
+        </span>
         {!state.completionEventId ? (
           <button
             type="button"
