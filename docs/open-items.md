@@ -12,7 +12,7 @@ Kept so side conversations don't lose the thread. Update as things close.
 
 ## Queued, in order
 1. ~~Rules review~~ **Done in AGENTS.md (2026-10):** warmer factual copy, counters allowed outside Attention, optional extras beyond the 3-minute loop, designed moments for real milestones. Still to do: PRD/design docs still describe the old stricter rules (PRD §12 copy register, design-revision-v1 "no gradients"); AGENTS.md says PRD wins on conflict, so those need updating to match. The banned-word list ("streak", "achievement", "badge") is left for the vocabulary review.
-2. **Vocabulary review**: user finds "Character Sheet" and "Stance" unclear. Candidate relatable labels to be proposed and chosen (UI labels first; code names can stay). Also check Mark, Rank, Season, Chapter, Momentum, Probe, Undertaking, Outcome, Reference.
+2. ~~Vocabulary review~~ **Done** (see below). Rank, Season, Chapter, Momentum, Commitment kept as is.
 3. Confirmations for Notes and Metrics (Marks and commitments done).
 4. Optional short title per Outcome for the Morning screen.
 5. **Milestone 7**: weekly review, declare next week, season close into a Chapter, rank evaluation.
