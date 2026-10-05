@@ -33,9 +33,13 @@ const LINKS = [
 export function Nav() {
   return (
     <nav className="fixed inset-x-0 bottom-0 border-t border-border bg-ground">
-      <div className="mx-auto flex max-w-xl items-center justify-center gap-6 px-6 py-3">
+      <div className="mx-auto flex max-w-xl items-center justify-between gap-3 px-4 py-3 sm:justify-center sm:gap-6 sm:px-6">
         {LINKS.map((link) => (
-          <a key={link.href} href={link.href} className="ia-link font-mono text-xs uppercase tracking-wide2">
+          <a
+            key={link.href}
+            href={link.href}
+            className="ia-link whitespace-nowrap font-mono text-[11px] uppercase tracking-wide2 sm:text-xs"
+          >
             {link.label}
           </a>
         ))}

@@ -77,7 +77,7 @@ export default async function CharacterSheetPage() {
             )}
           </section>
 
-          <section className="mt-10 flex flex-wrap gap-x-5 gap-y-2 border-t border-border pt-6">
+          <section className="mt-10 flex flex-wrap justify-between gap-x-3 gap-y-2 border-t border-border pt-6 [&_a]:whitespace-nowrap [&_a]:text-[11px] sm:justify-start sm:gap-x-5 sm:[&_a]:text-xs">
             <a href="/quests" className="ia-link font-mono text-xs uppercase tracking-wide2">
               Quests
             </a>
