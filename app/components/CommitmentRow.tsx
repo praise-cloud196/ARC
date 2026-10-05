@@ -102,6 +102,13 @@ export function CommitmentRow({ commitment, logicalDay }: { commitment: Commitme
       </div>
 
       {state.completionEventId && !state.resistance && (
+        <p className="text-ink-muted mt-2 font-mono text-xs">
+          Recorded. {state.weekCount}/{state.weeklyTarget} this week
+          {state.weekCount >= state.weeklyTarget ? ". Weekly target met." : "."}
+        </p>
+      )}
+
+      {state.completionEventId && !state.resistance && (
         <div className="mt-3 flex gap-2">
           {RESISTANCE_OPTIONS.map((option) => (
             <button

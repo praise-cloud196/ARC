@@ -36,7 +36,7 @@ export async function submitMark(formData: FormData): Promise<void> {
   const reference = readReference(formData);
 
   await withTransaction((client) => recordMark(client, { domain, note, reference }));
-  redirect("/marks");
+  redirect("/marks?recorded=1");
 }
 
 /** design-revision-v2.md §7.1/§7.3: a Mark is a record — editable at any time. */

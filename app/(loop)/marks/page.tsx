@@ -25,7 +25,7 @@ export const dynamic = "force-dynamic";
 export default async function MarksPage({
   searchParams,
 }: {
-  searchParams: Promise<{ withdrawn?: string; edit?: string }>;
+  searchParams: Promise<{ withdrawn?: string; edit?: string; recorded?: string }>;
 }) {
   const params = await searchParams;
   const showWithdrawn = params.withdrawn === "1";
@@ -39,6 +39,10 @@ export default async function MarksPage({
         <a href="/character-sheet" className="ia-link text-ink-faint mb-8 inline-block font-mono text-xs normal-case">
           ← Character Sheet
         </a>
+
+        {params.recorded === "1" && (
+          <p className="text-ink-muted mx-auto mb-4 max-w-md font-mono text-xs">Mark recorded. Permanent.</p>
+        )}
 
         <form action={submitMark} className="mx-auto mb-8 max-w-md space-y-4 border border-border p-4">
           <label className="block space-y-2">
