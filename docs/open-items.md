@@ -17,6 +17,9 @@ Kept so side conversations don't lose the thread. Update as things close.
 4. Optional short title per Outcome for the Morning screen.
 5. **Milestone 7**: weekly review, declare next week, season close into a Chapter, rank evaluation.
 
+## Decided, not yet built
+- Attention behaviours may show counters: current run beside best run (AGENTS.md rule 6). No Attention screen shows this yet.
+
 ## Known caveats
 - Catch-up: a completion logged after its week ended doesn't undo the `commitment.missed` already written.
 - `npm test` must run in a fresh shell (a leftover production `DATABASE_URL` skips loading `.env.local` and disables the production guard).

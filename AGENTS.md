@@ -26,7 +26,7 @@ Violating any of these is a defect regardless of whether tests pass.
 3. **Derived values are computed from the log**, never stored as authoritative counters. The `rebuild` command must reproduce identical state.
 4. **No numeric literal governing system behaviour may appear outside `lib/calibration.ts`.** XP values, level costs, momentum thresholds, dormancy, tenure, clock semantics (e.g. the logical day boundary hour), thresholds of any kind.
 5. **XP must stay removable.** Nothing in momentum, rank, Marks, history, or the nightly report may read XP or level values.
-6. **The Attention layer never shows day counters, streaks, or "clean since" dates.** Rolling density only there. Elsewhere (commitments, Marks, activity), rolling counts such as "5 of the last 7 days" and "days since" figures are allowed. A streak that resets to zero as a penalty is still not allowed (see rule 12). *(Loosened 2026-10: this rule previously banned counters everywhere.)*
+6. **Counters are allowed everywhere, including the Attention layer, but a slip must never erase a record.** Rolling counts ("5 of the last 7 days"), current runs and "days since" figures are fine. Whenever a current run is shown, the best run is shown beside it ("Current: 3 days · Best: 12"), so a reset never reads as a loss (see rule 12). Counters are computed from the log, never stored (rule 3). They stay off the Morning screen for the Attention layer (rule 11). *(Loosened 2026-10: this rule previously banned counters everywhere.)*
 7. **No AI. No model SDK in the dependency tree.**
 8. **No notifications. No push infrastructure.** The only background job is the nightly rollup.
 9. **Weekly commitment immutability is enforced at the data layer**, not in the UI.
