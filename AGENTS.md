@@ -26,7 +26,7 @@ Violating any of these is a defect regardless of whether tests pass.
 3. **Derived values are computed from the log**, never stored as authoritative counters. The `rebuild` command must reproduce identical state.
 4. **No numeric literal governing system behaviour may appear outside `lib/calibration.ts`.** XP values, level costs, momentum thresholds, dormancy, tenure, clock semantics (e.g. the logical day boundary hour), thresholds of any kind.
 5. **XP must stay removable.** Nothing in momentum, rank, Marks, history, or the nightly report may read XP or level values.
-6. **No day counters, streaks, or "clean since" dates anywhere in the product.** Especially in the Attention layer. Rolling density only.
+6. **The Attention layer never shows day counters, streaks, or "clean since" dates.** Rolling density only there. Elsewhere (commitments, Marks, activity), rolling counts such as "5 of the last 7 days" and "days since" figures are allowed. A streak that resets to zero as a penalty is still not allowed (see rule 12). *(Loosened 2026-10: this rule previously banned counters everywhere.)*
 7. **No AI. No model SDK in the dependency tree.**
 8. **No notifications. No push infrastructure.** The only background job is the nightly rollup.
 9. **Weekly commitment immutability is enforced at the data layer**, not in the UI.
@@ -46,10 +46,11 @@ Never use: *task, streak, habit, goal, guild, level (global), badge, achievement
 
 ## Copy rules
 
-The system's voice is flat, terse, factual. It states what happened. It does not console, exhort, congratulate, or interpret feelings.
+The system's voice is terse and factual, but not cold. It states what happened and may recognise it: noting a pattern, a pace, or a first ("Third session this week. Same pace as last month.") is allowed. It does not console, exhort, scold, or interpret feelings. *(Loosened 2026-10: recognition and context are now allowed.)*
 
 - No exclamation marks
-- No second-person encouragement ("you've got this", "great job", "keep it up")
+- No cheerleading or generic praise ("you've got this", "great job", "keep it up"). Specific, factual recognition is fine
+- No scolding or guilt when the user misses something
 - No inference about the user's emotional state
 - Reference register: **"Day incomplete. Progress continues."**
 - The nightly report never grows in response to failure — length follows activity
@@ -61,11 +62,15 @@ Copy is part of the product, not decoration. Do not improvise it. If a string is
 
 These have been considered and rejected. Do not add them, do not propose them, do not leave TODOs for them:
 
-Classes · skill trees · unlocks · boss battles as an object · guild terminology · streaks · a global level · inventory · currency · leaderboards · social features · sharing · AI coaching · health integrations · push notifications · gamified onboarding · daily login rewards · anything that increases the daily loop beyond three minutes.
+Classes · skill trees · unlocks · boss battles as an object · guild terminology · streaks that reset as a penalty · a global level · inventory · currency · leaderboards · social features · sharing · AI coaching · health integrations · push notifications · gamified onboarding · daily login rewards · anything that makes the *required* daily loop longer than three minutes.
+
+## Moments
+
+Real milestones (a rank change, an Outcome achieved, a Mark recorded, a season closing) may have a designed moment: a distinct screen state or short animation, in the system's voice, shown once. They record what happened and never reward opening the app, and never expire or pressure. *(Added 2026-10.)*
 
 ## Scope discipline
 
-The daily loop has a three-minute budget. Any feature that doesn't fit belongs in the weekly Ritual or does not exist. When adding to the `Today` surface, the default answer is no.
+The required daily loop has a three-minute budget: opening the app and logging commitments. Optional extras (a reflection, a progress view, context lines) may exist if they never block that quick log. Anything long belongs in the weekly Ritual or is optional. When adding to the `Today` surface, keep it light: small read-only context is fine; anything that adds a required step is not. *(Loosened 2026-10.)*
 
 Build in milestone order (`docs/architecture-and-ux-v1.0.md` §5). Milestones 1–4 are the smallest livable product; do not begin 5 until 4 is usable end to end.
 
