@@ -17,6 +17,11 @@ Kept so side conversations don't lose the thread. Update as things close.
 4. Optional short title per Outcome for the Morning screen.
 5. **Milestone 7**: weekly review, declare next week, season close into a Chapter, rank evaluation.
 
+## Naming review (2026-10)
+- Applied on screen: Profile, Milestone(s), Link, Project(s), Experiment(s), Goal(s). Main Quest kept.
+- **Open: Stance's label.** "Habit limits" was rejected ("doesn't quite hit"). Still shows "Stance(s)" everywhere (Profile links, its page, the audit step). Needs a new word; the values are Observing / Reducing / Abstaining / Not now.
+- Code and DB names are unchanged on purpose.
+
 ## Decided, not yet built
 - Attention behaviours may show counters: current run beside best run (AGENTS.md rule 6). No Attention screen shows this yet.
 

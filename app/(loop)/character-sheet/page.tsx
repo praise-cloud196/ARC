@@ -22,7 +22,7 @@ export default async function CharacterSheetPage() {
     <main className="px-6 py-12">
       <Panel
         size="wide"
-        header={<div className="text-ink-faint text-center font-mono text-[10px] uppercase tracking-[0.2em]">Character Sheet</div>}
+        header={<div className="text-ink-faint text-center font-mono text-[10px] uppercase tracking-[0.2em]">Profile</div>}
       >
         <div className="text-ink">
           <section className="mb-10 text-center">
@@ -46,14 +46,14 @@ export default async function CharacterSheetPage() {
 
           <section className="mb-10">
             <SystemVoice size="sm" className="text-ink-muted">
-              Marks
+              Milestones
             </SystemVoice>
             <p className="font-sans mt-2">{identity.marksCount}</p>
           </section>
 
           <section>
             <SystemVoice size="sm" className="text-ink-muted mb-3 block">
-              Outcomes
+              Goals
             </SystemVoice>
             {outcomes.length === 0 ? (
               <p className="text-ink-faint font-sans text-sm">None recorded yet.</p>
@@ -82,7 +82,7 @@ export default async function CharacterSheetPage() {
               Quests
             </a>
             <a href="/marks" className="ia-link font-mono text-xs uppercase tracking-wide2">
-              Marks
+              Milestones
             </a>
             <a href="/metrics" className="ia-link font-mono text-xs uppercase tracking-wide2">
               Metrics

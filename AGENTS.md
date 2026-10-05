@@ -42,7 +42,9 @@ Use these names in code, database, and copy. Do not invent synonyms.
 
 `Domain` · `Identity` · `Momentum` · `Condition` · `XP` · `Mark` · `Rank` · `Season` · `Chapter` · `Commitment` · `Undertaking` · `Probe` · `Outcome` · `Stance` · `Reference`
 
-Never use: *task, streak, habit, goal, guild, level (global), badge, achievement, points, score.*
+**On-screen labels differ from these code names (2026-10).** The words above stay as identifiers in code, database and event types. What the user reads: Character Sheet → *Profile*, Mark → *Milestone*, Reference → *Link*, Undertaking → *Project*, Probe → *Experiment*, Outcome → *Goal*. Main Quest stays. Stance's on-screen label is still to be chosen.
+
+Never use: *task, guild, level (global), badge, points, score.* (*streak*, *habit* and *goal* were removed from this list in 2026-10: streaks are allowed under rule 6, and "Goal" and "habit" are now ordinary words.)
 
 ## Copy rules
 

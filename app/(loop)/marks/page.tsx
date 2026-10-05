@@ -36,13 +36,13 @@ export default async function MarksPage({
 
   return (
     <main className="px-6 py-12">
-      <Panel size="wide" header={<div className="text-ink-faint text-center font-mono text-[10px] uppercase tracking-[0.2em]">Marks</div>}>
+      <Panel size="wide" header={<div className="text-ink-faint text-center font-mono text-[10px] uppercase tracking-[0.2em]">Milestones</div>}>
         <a href="/character-sheet" className="ia-link text-ink-faint mb-8 inline-block font-mono text-xs normal-case">
-          ← Character Sheet
+          ← Profile
         </a>
 
         {params.recorded === "1" && (
-          <p className="text-ink-muted mx-auto mb-4 max-w-md font-mono text-xs">Mark recorded. Permanent.</p>
+          <p className="text-ink-muted mx-auto mb-4 max-w-md font-mono text-xs">Milestone recorded. Permanent.</p>
         )}
 
         <form action={submitMark} className="mx-auto mb-8 max-w-md space-y-4 border border-border p-4">
@@ -61,15 +61,15 @@ export default async function MarksPage({
             <textarea name="note" required rows={3} className="ia w-full rounded border border-border bg-surface p-3 font-sans text-ink" />
           </label>
           <label className="block space-y-2">
-            <SystemVoice size="sm">Reference — label (optional)</SystemVoice>
+            <SystemVoice size="sm">Link — label (optional)</SystemVoice>
             <input type="text" name="referenceLabel" className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink" />
           </label>
           <label className="block space-y-2">
-            <SystemVoice size="sm">Reference — URL (optional)</SystemVoice>
+            <SystemVoice size="sm">Link — URL (optional)</SystemVoice>
             <input type="url" name="referenceUrl" className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink" />
           </label>
           <button type="submit" className="ia border border-accent-dim px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-accent">
-            Add Mark
+            Add Milestone
           </button>
         </form>
 
@@ -95,7 +95,7 @@ export default async function MarksPage({
                       />
                     </label>
                     <label className="block space-y-2">
-                      <SystemVoice size="sm">Reference — label (optional)</SystemVoice>
+                      <SystemVoice size="sm">Link — label (optional)</SystemVoice>
                       <input
                         type="text"
                         name="referenceLabel"
@@ -104,7 +104,7 @@ export default async function MarksPage({
                       />
                     </label>
                     <label className="block space-y-2">
-                      <SystemVoice size="sm">Reference — URL (optional)</SystemVoice>
+                      <SystemVoice size="sm">Link — URL (optional)</SystemVoice>
                       <input
                         type="url"
                         name="referenceUrl"

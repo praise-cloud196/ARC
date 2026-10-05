@@ -119,7 +119,7 @@ async function MarksStep() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="font-sans text-xl">Retroactive Marks</h1>
+        <h1 className="font-sans text-xl">Retroactive Milestones</h1>
         <p className="text-ink-muted text-sm">
           Past achievements. What changed because of this? At least {AUDIT_MIN_RETROACTIVE_MARKS} required — logged
           so far: {marks.count}.
@@ -144,15 +144,15 @@ async function MarksStep() {
           <textarea name="note" required rows={2} className="ia w-full rounded border border-border bg-surface p-3 font-sans text-ink" />
         </label>
         <label className="block space-y-2">
-          <SystemVoice size="sm">Reference — label (optional)</SystemVoice>
+          <SystemVoice size="sm">Link — label (optional)</SystemVoice>
           <input type="text" name="referenceLabel" className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink" />
         </label>
         <label className="block space-y-2">
-          <SystemVoice size="sm">Reference — URL (optional)</SystemVoice>
+          <SystemVoice size="sm">Link — URL (optional)</SystemVoice>
           <input type="url" name="referenceUrl" className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink" />
         </label>
         <button type="submit" className="ia border border-border px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-ink">
-          Add Mark
+          Add Milestone
         </button>
       </form>
 
@@ -262,7 +262,7 @@ function OutcomesStep() {
     <form action={submitOutcomes} className="space-y-6">
       <div>
         <h1 className="font-sans text-xl">The three statements</h1>
-        <p className="text-ink-muted text-sm">Recorded verbatim, as top-level Outcomes.</p>
+        <p className="text-ink-muted text-sm">Recorded verbatim, as top-level Goals.</p>
       </div>
       {[1, 2, 3].map((n) => (
         <label key={n} className="block space-y-2">

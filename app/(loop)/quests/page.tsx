@@ -48,7 +48,7 @@ export default async function QuestsPage() {
   return (
     <main className="px-6 py-12">
       <Panel size="wide" header={<div className="text-ink-faint text-center font-mono text-[10px] uppercase tracking-[0.2em]">Quests</div>}>
-        <BackLink href="/character-sheet" label="← Character Sheet" />
+        <BackLink href="/character-sheet" label="← Profile" />
 
         {/* Commitments */}
         <section className="mb-10">
@@ -66,7 +66,7 @@ export default async function QuestsPage() {
         {/* Undertakings */}
         <section className="mb-10">
           <SystemVoice size="sm" className="text-ink-muted mb-3 block">
-            Undertakings
+            Projects
           </SystemVoice>
 
           <form action={submitUndertaking} className="mb-6 max-w-md space-y-3 border border-border p-4">
@@ -80,7 +80,7 @@ export default async function QuestsPage() {
               />
             </label>
             <button type="submit" className="ia border border-accent-dim px-3 py-1.5 font-mono text-xs uppercase tracking-wide2 text-accent">
-              Start Undertaking
+              Start Project
             </button>
             {activeUndertakings.length >= 3 && (
               <p className="font-sans text-ink-faint text-xs">3 active already — complete or abandon one first.</p>
@@ -118,7 +118,7 @@ export default async function QuestsPage() {
                         <summary className="ia-link cursor-pointer font-mono text-xs uppercase tracking-wide2">Complete</summary>
                         <form action={submitCompleteUndertaking} className="mt-2 space-y-2">
                           <input type="hidden" name="undertakingId" value={u.id} />
-                          <SystemVoice size="sm">Mark this? (optional)</SystemVoice>
+                          <SystemVoice size="sm">Record a milestone? (optional)</SystemVoice>
                           <textarea
                             name="note"
                             rows={2}
@@ -128,13 +128,13 @@ export default async function QuestsPage() {
                           <input
                             type="text"
                             name="referenceLabel"
-                            placeholder="Reference label (optional)"
+                            placeholder="Link label (optional)"
                             className="ia w-full border border-border bg-surface p-2 font-sans text-ink text-sm"
                           />
                           <input
                             type="url"
                             name="referenceUrl"
-                            placeholder="Reference URL (optional)"
+                            placeholder="Link URL (optional)"
                             className="ia w-full border border-border bg-surface p-2 font-sans text-ink text-sm"
                           />
                           <button type="submit" className="ia border border-accent-dim px-3 py-1.5 font-mono text-xs uppercase tracking-wide2 text-accent">
@@ -160,7 +160,7 @@ export default async function QuestsPage() {
         {/* Probes */}
         <section className="mb-10">
           <SystemVoice size="sm" className="text-ink-muted mb-3 block">
-            Probes
+            Experiments
           </SystemVoice>
 
           <form action={submitProbe} className="mb-6 max-w-md space-y-3 border border-border p-4">
@@ -177,7 +177,7 @@ export default async function QuestsPage() {
               <input type="text" name="signal" required className="ia w-full border border-border bg-surface p-2 font-sans text-ink" />
             </label>
             <button type="submit" className="ia border border-accent-dim px-3 py-1.5 font-mono text-xs uppercase tracking-wide2 text-accent">
-              Start Probe
+              Start Experiment
             </button>
             {activeProbes.length >= 2 && (
               <p className="font-sans text-ink-faint text-xs">2 active already — resolve one first.</p>
@@ -207,7 +207,7 @@ export default async function QuestsPage() {
         {/* Outcomes */}
         <section>
           <SystemVoice size="sm" className="text-ink-muted mb-3 block">
-            Outcomes
+            Goals
           </SystemVoice>
           {outcomes.length === 0 ? (
             <p className="text-ink-faint font-sans text-sm">None recorded yet.</p>
@@ -239,11 +239,11 @@ export default async function QuestsPage() {
                             <textarea name="note" required rows={2} className="ia w-full border border-border bg-surface p-2 font-sans text-ink text-sm" />
                           </label>
                           <label className="block space-y-2">
-                            <SystemVoice size="sm">Reference label (optional)</SystemVoice>
+                            <SystemVoice size="sm">Link label (optional)</SystemVoice>
                             <input type="text" name="referenceLabel" className="ia w-full border border-border bg-surface p-2 font-sans text-ink text-sm" />
                           </label>
                           <label className="block space-y-2">
-                            <SystemVoice size="sm">Reference URL (optional)</SystemVoice>
+                            <SystemVoice size="sm">Link URL (optional)</SystemVoice>
                             <input type="url" name="referenceUrl" className="ia w-full border border-border bg-surface p-2 font-sans text-ink text-sm" />
                           </label>
                           <button type="submit" className="ia border border-accent-dim px-3 py-1.5 font-mono text-xs uppercase tracking-wide2 text-accent">

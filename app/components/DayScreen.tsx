@@ -37,7 +37,7 @@ export function DayScreen({
           </div>
         )}
         {commitments.length === 0 && <CarryOverPrompt labels={carryableLabels} />}
-        {lastMarkDay && <p className="text-ink-faint mt-4 font-mono text-xs">Last Mark: {lastMarkDay}</p>}
+        {lastMarkDay && <p className="text-ink-faint mt-4 font-mono text-xs">Last milestone: {lastMarkDay}</p>}
       </Panel>
     </main>
   );

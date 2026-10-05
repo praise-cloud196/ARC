@@ -39,7 +39,7 @@ export default async function NotesPage({
     <main className="px-6 py-12">
       <Panel size="wide" header={<div className="text-ink-faint text-center font-mono text-[10px] uppercase tracking-[0.2em]">Notes</div>}>
         <a href="/character-sheet" className="ia-link text-ink-faint mb-8 inline-block font-mono text-xs normal-case">
-          ← Character Sheet
+          ← Profile
         </a>
 
         <form action={submitNote} className="mx-auto mb-8 max-w-md space-y-4 border border-border p-4">

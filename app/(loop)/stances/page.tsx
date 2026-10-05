@@ -44,7 +44,7 @@ export default async function StancesPage({
     <main className="px-6 py-12">
       <Panel size="wide" header={<div className="text-ink-faint text-center font-mono text-[10px] uppercase tracking-[0.2em]">Stances</div>}>
         <a href="/character-sheet" className="ia-link text-ink-faint mb-8 inline-block font-mono text-xs normal-case">
-          ← Character Sheet
+          ← Profile
         </a>
 
         {params.error && <p className="text-ink-muted mb-6 font-sans text-sm">{params.error}</p>}

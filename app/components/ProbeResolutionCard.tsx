@@ -53,7 +53,7 @@ export function ProbeResolutionCard({ probe }: { probe: Probe }) {
   return (
     <div className="border border-border p-4">
       <SystemVoice size="sm" className="text-ink-muted">
-        Probe decision due
+        Experiment decision due
       </SystemVoice>
       <p className="font-sans text-ink mt-2">{probe.statement}</p>
       <p className="text-ink-faint mt-1 font-mono text-xs">
