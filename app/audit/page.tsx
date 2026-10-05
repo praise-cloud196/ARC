@@ -223,9 +223,9 @@ async function StancesStep() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="font-sans text-xl">Stances</h1>
+        <h1 className="font-sans text-xl">Watchlist</h1>
         <p className="text-ink-muted text-sm">
-          Behaviours you want a stance toward. Named so far: {count}. &ldquo;Not now&rdquo; means untracked, uncounted, never referenced again.
+          Behaviours you want to keep an eye on or change. Named so far: {count}. &ldquo;Not now&rdquo; means untracked, uncounted, never referenced again.
         </p>
       </div>
 
@@ -235,7 +235,7 @@ async function StancesStep() {
           <input type="text" name="behaviour" required className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink" />
         </label>
         <label className="block space-y-2">
-          <SystemVoice size="sm">Stance</SystemVoice>
+          <SystemVoice size="sm">Setting</SystemVoice>
           <select name="stance" required className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink">
             <option value="observing">Observing</option>
             <option value="reducing">Reducing</option>
@@ -244,7 +244,7 @@ async function StancesStep() {
           </select>
         </label>
         <button type="submit" className="ia border border-border px-4 py-2 font-mono text-sm uppercase tracking-wide2 text-ink">
-          Add Stance
+          Add to Watchlist
         </button>
       </form>
 

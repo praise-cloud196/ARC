@@ -91,7 +91,7 @@ export default async function CharacterSheetPage() {
               Notes
             </a>
             <a href="/stances" className="ia-link font-mono text-xs uppercase tracking-wide2">
-              Stances
+              Watchlist
             </a>
           </section>
         </div>

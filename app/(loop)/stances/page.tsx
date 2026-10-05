@@ -42,7 +42,7 @@ export default async function StancesPage({
 
   return (
     <main className="px-6 py-12">
-      <Panel size="wide" header={<div className="text-ink-faint text-center font-mono text-[10px] uppercase tracking-[0.2em]">Stances</div>}>
+      <Panel size="wide" header={<div className="text-ink-faint text-center font-mono text-[10px] uppercase tracking-[0.2em]">Watchlist</div>}>
         <a href="/character-sheet" className="ia-link text-ink-faint mb-8 inline-block font-mono text-xs normal-case">
           ← Profile
         </a>
@@ -90,7 +90,7 @@ export default async function StancesPage({
 
         {!withinBoundary && (
           <p className="text-ink-faint mb-6 text-xs">
-            Changing an already-named behaviour&rsquo;s stance is restricted to season boundaries. Declaring a new one is
+            Changing an already-listed behaviour&rsquo;s setting is restricted to season boundaries. Declaring a new one is
             always allowed.
           </p>
         )}
@@ -102,7 +102,7 @@ export default async function StancesPage({
             <input type="text" name="behaviour" required className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink" />
           </label>
           <label className="block space-y-2">
-            <SystemVoice size="sm">Stance</SystemVoice>
+            <SystemVoice size="sm">Setting</SystemVoice>
             <select name="stance" required defaultValue="observing" className="ia w-full rounded border border-border bg-surface p-2 font-sans text-ink">
               {STANCE_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
