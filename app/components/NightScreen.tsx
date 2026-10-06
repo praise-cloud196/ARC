@@ -1,49 +1,69 @@
-import { BracketedAnnouncement } from "./BracketedAnnouncement";
 import { Panel } from "./Panel";
-import { SystemVoice } from "./SystemVoice";
 import { CommitmentRow } from "./CommitmentRow";
 import { ModeGlow } from "./ModeGlow";
 import type { TodaysCommitmentRow } from "@/lib/loop";
+import type { NightSummary } from "@/lib/report";
 
 /**
- * Night (milestone-4-spec.md §6) — the report, rendered in the system's
- * own voice, inside a System panel headed `[ SYSTEM REPORT ]`
- * (docs/design-revision-v1.md §7). Not bright: the nightly report fires
- * every night, not rarely (§6 — accent-bright is for Marks, hidden quests,
- * rank promotions only). The report lines themselves are unchanged —
- * still exactly what lib/loop.ts computed, same conditional styling.
+ * Night: the day in a few sentences, under a moon and a scatter of stars.
+ * The panel frame, corner marks and mono day line are the same system as
+ * every other screen; the content is written as sentences (lib/report.ts's
+ * composeNightSummary) rather than report lines.
  *
- * docs/night-access-fix.md §2: below the report, a `<details>` disclosure
- * (no client JS needed to open/close it) reveals the same commitment rows
- * Day would show for the current logical day — the log doesn't actually
- * close until the 6am boundary, so neither should the UI's only way to
- * reach it. This is not a fourth loop state: completing a row here still
- * leaves `selectLoopState` clock-driven, so the screen stays on Night, and
- * the report above is a snapshot computed on this load — it never refreshes
- * itself, but it's already correct again on the next real one.
+ * docs/night-access-fix.md §2: below the summary, a `<details>` disclosure
+ * (no client JS) reveals the same commitment rows Day would show — the log
+ * doesn't close until the 6am boundary, so neither does the UI's only way
+ * to reach it. Not a fourth loop state.
  */
-export function NightScreen({ lines, todaysCommitments }: { lines: string[]; todaysCommitments?: TodaysCommitmentRow[] }) {
+export function NightScreen({
+  summary,
+  todaysCommitments,
+}: {
+  summary: NightSummary;
+  todaysCommitments?: TodaysCommitmentRow[];
+}) {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-8 px-6 py-16">
       <ModeGlow mode="night" />
-      <Panel mode="night" ambient header={<BracketedAnnouncement>System Report</BracketedAnnouncement>}>
-        <div className="space-y-3 text-center">
-          {lines.map((line, i) => (
-            <SystemVoice
-              key={i}
-              as="div"
-              size={i === 0 ? "sm" : "base"}
-              className={line === "" ? "h-2" : i === 0 ? "text-ink-faint" : "text-ink-muted"}
-            >
-              {line}
-            </SystemVoice>
-          ))}
+      <Panel
+        mode="night"
+        ambient
+        header={<div className="text-center font-mono text-[10px] uppercase tracking-[0.2em] text-[#7E8AB8]">{summary.dayLine}</div>}
+      >
+        <div className="relative text-center">
+          <svg
+            aria-hidden
+            viewBox="0 0 300 90"
+            className="pointer-events-none absolute -top-2 left-1/2 h-[90px] w-full max-w-[420px] -translate-x-1/2"
+          >
+            <circle cx="28" cy="18" r="1.3" fill="#8F9BCB" />
+            <circle cx="72" cy="42" r="1" fill="#6F7AA8" />
+            <circle cx="108" cy="12" r="1.6" fill="#B9C3F0" />
+            <circle cx="214" cy="30" r="1" fill="#8F9BCB" />
+            <circle cx="250" cy="10" r="1.4" fill="#B9C3F0" />
+            <circle cx="274" cy="48" r="1" fill="#6F7AA8" />
+            <circle cx="40" cy="70" r="1.1" fill="#8F9BCB" />
+            <circle cx="262" cy="76" r="1.2" fill="#8F9BCB" />
+          </svg>
+          <div
+            aria-hidden
+            className="relative mx-auto mb-5 mt-6 h-9 w-9 rounded-full bg-[#E8E2C9]"
+            style={{ boxShadow: "inset -10px -2px 0 0 #0B1020" }}
+          />
+          <p className="font-sans text-[28px] font-medium leading-tight text-[#E8E6F5]">{summary.headline}</p>
+          <div className="mt-3 space-y-1.5">
+            {summary.sentences.map((sentence, i) => (
+              <p key={i} className="font-sans text-[15px] leading-relaxed text-[#9AA3CC]">
+                {sentence}
+              </p>
+            ))}
+          </div>
         </div>
       </Panel>
 
       {todaysCommitments && (
         <details className="w-full max-w-[480px]">
-          <summary className="ia-link text-ink-faint block cursor-pointer text-center font-mono text-xs normal-case [&::-webkit-details-marker]:hidden">
+          <summary className="mx-auto block w-fit cursor-pointer rounded-full border border-[#3A4570] px-5 py-2 text-center font-sans text-sm text-[#B9C3F0] hover:border-[#6F7AA8] [&::-webkit-details-marker]:hidden">
             Log something from today
           </summary>
           <div className="mt-4">

@@ -153,3 +153,81 @@ export function computeNightlyReport(input: NightlyReportInput): string[] {
   lines.push(`Momentum: ${momentumWord}${momentumQualifier(input.momentum)}`);
   return lines.slice(0, 5);
 }
+
+// --- Night screen summary -----------------------------------------------
+// The Night screen reads sentences, not report lines. This is a second,
+// presentation-oriented rendering of the same inputs; `computeNightlyReport`
+// above is unchanged (and still what tests/report.test.ts covers).
+
+export interface NightSummary {
+  /** "DAY 44 · SEASON 1" */
+  dayLine: string;
+  /** Large line: "2 of 6 done", "All 6 done", "Nothing logged yet". */
+  headline: string;
+  /** Supporting sentences, in order. */
+  sentences: string[];
+}
+
+const NUMBER_WORDS = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"];
+
+function countWord(n: number): string {
+  return NUMBER_WORDS[n] ?? String(n);
+}
+
+function joinList(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? "";
+  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+}
+
+function capitalise(word: string): string {
+  return `${word[0]?.toUpperCase() ?? ""}${word.slice(1)}`;
+}
+
+/** Pure. Sentences for the Night screen from the same input as `computeNightlyReport`. */
+export function composeNightSummary(input: NightlyReportInput): NightSummary {
+  const dayLine = `DAY ${input.dayNumber} · SEASON ${input.seasonNumber}`;
+
+  if (input.returnAfterGapDays !== null) {
+    const sentences = [`First entry in ${input.returnAfterGapDays} days.`];
+    if (input.returnLoggedLine) sentences.push(input.returnLoggedLine);
+    sentences.push("The record resumes.");
+    return { dayLine, headline: "Welcome back to the record", sentences };
+  }
+
+  const completed = input.completedTodayIds.length;
+  const total = input.weekCommitments.length;
+  const open = Math.max(0, total - completed);
+  const domains = Object.entries(input.xpEarnedToday)
+    .filter(([, xp]) => xp > 0)
+    .sort(([, a], [, b]) => b - a)
+    .map(([domain]) => capitalise(domain));
+
+  let headline: string;
+  const sentences: string[] = [];
+
+  if (completed === 0) {
+    headline = total === 0 ? "Nothing scheduled" : "Nothing logged yet";
+    if (open > 0) sentences.push(`${countWord(open)} ${open === 1 ? "commitment is" : "commitments are"} open until 6am.`);
+  } else if (completed === total) {
+    headline = `All ${total} done`;
+    sentences.push(domains.length > 0 ? `${joinList(domains)} moved today.` : "Everything is logged for today.");
+  } else {
+    headline = `${completed} of ${total} done`;
+    if (domains.length > 0) sentences.push(`${joinList(domains)} moved today.`);
+    sentences.push(`${countWord(open)} ${open === 1 ? "is" : "are"} still open until 6am.`);
+  }
+
+  if (input.mark) sentences.push(`Milestone recorded: ${input.mark.note}`);
+
+  const state = input.momentum.state;
+  const qualifier = momentumQualifier(input.momentum).replace(/^ — /, "");
+  sentences.push(
+    qualifier && qualifier.toLowerCase() !== String(state).toLowerCase()
+      ? `Momentum: ${state}, ${qualifier}.`
+      : `Momentum: ${state}.`
+  );
+
+  if (input.closingLine) sentences.push(input.closingLine);
+
+  return { dayLine, headline, sentences };
+}

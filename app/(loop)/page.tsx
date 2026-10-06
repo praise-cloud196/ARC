@@ -8,7 +8,7 @@ import {
   determineLoopState,
   recordAppOpened,
   computeMorningScreenData,
-  computeTonightsReport,
+  computeTonightsSummary,
   computeTodaysCommitmentRows,
 } from "@/lib/loop";
 import { listRecentMarks } from "@/lib/marks";
@@ -72,10 +72,10 @@ export default async function TodayPage() {
     // way back to them — the logical day, and so the ability to log
     // conduct, stays open until the 6am boundary even though the display
     // hour has already switched the screen to Night.
-    const [lines, todaysCommitments] = await withReadTransaction((client) =>
-      Promise.all([computeTonightsReport(client, now), computeTodaysCommitmentRows(client, now)])
+    const [summary, todaysCommitments] = await withReadTransaction((client) =>
+      Promise.all([computeTonightsSummary(client, now), computeTodaysCommitmentRows(client, now)])
     );
-    return <NightScreen lines={lines} todaysCommitments={todaysCommitments} />;
+    return <NightScreen summary={summary} todaysCommitments={todaysCommitments} />;
   }
 
   const { commitments, lastMarkDay, carryableLabels } = await withReadTransaction(async (client) => ({

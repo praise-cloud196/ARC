@@ -311,7 +311,7 @@ body {
   background: radial-gradient(ellipse 90% 55% at 50% 0%, rgba(143, 211, 232, 0.12), transparent 70%);
 }
 .mode-glow[data-mode="night"] {
-  background: radial-gradient(ellipse 80% 45% at 50% 100%, rgba(108, 157, 198, 0.07), transparent 70%);
+  background: radial-gradient(ellipse 90% 60% at 50% 100%, rgba(70, 85, 170, 0.18), transparent 72%);
 }
 
 [data-mode="morning"] .panel-surface {
@@ -333,7 +333,8 @@ body {
 }
 
 [data-mode="night"] .panel-surface {
-  background-color: #080A0E;
+  background-color: #0B1020;
+  border-color: #232B4A;
 }
 [data-mode="night"].panel-arrive {
   animation-name: panel-arrive-reduced;

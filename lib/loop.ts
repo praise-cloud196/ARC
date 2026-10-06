@@ -21,7 +21,9 @@ import type { MomentumResult } from "./momentum";
 import { resolveEffectiveEvents, type RawEventRow } from "./effective-events";
 import { selectClosingLine, type FactCommitment, type FactCompletion } from "./report-facts";
 import {
+  composeNightSummary,
   computeNightlyReport,
+  type NightSummary,
   type NightlyReportInput,
   type ReportCommitment,
   type ReportMark,
@@ -287,6 +289,11 @@ async function computeClosingLine(client: PoolClient, asOfDay: string): Promise<
     }));
 
   return selectClosingLine({ commitments, completions, asOfDay });
+}
+
+/** Night screen's sentence-style summary (same data as the report). */
+export async function computeTonightsSummary(client: PoolClient, now: Date = new Date()): Promise<NightSummary> {
+  return composeNightSummary(await computeNightlyReportData(client, now));
 }
 
 /** Renders tonight's report. */
