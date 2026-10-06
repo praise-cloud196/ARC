@@ -9,6 +9,7 @@ import {
   completeUndertaking,
   createProbe,
   createUndertaking,
+  setOutcomeTitle,
 } from "@/lib/quests";
 import type { XpTier } from "@/lib/calibration";
 import type { Domain } from "@/lib/domains";
@@ -76,6 +77,13 @@ export async function submitAchieveOutcome(formData: FormData): Promise<void> {
   const note = requireString(formData, "note");
   const reference = readReference(formData);
   await withTransaction((client) => achieveOutcome(client, { outcomeId, domain, note, reference }));
+  redirect("/quests");
+}
+
+export async function submitGoalTitle(formData: FormData): Promise<void> {
+  const outcomeId = requireString(formData, "outcomeId");
+  const title = optionalString(formData, "title") ?? "";
+  await withTransaction((client) => setOutcomeTitle(client, outcomeId, title));
   redirect("/quests");
 }
 

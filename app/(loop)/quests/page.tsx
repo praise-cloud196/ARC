@@ -12,6 +12,7 @@ import {
   submitAbandonQuest,
   submitAchieveOutcome,
   submitCompleteUndertaking,
+  submitGoalTitle,
   submitProbe,
   submitUndertaking,
   submitUndertakingStep,
@@ -215,7 +216,21 @@ export default async function QuestsPage() {
             <div className="space-y-4">
               {outcomes.map((o) => (
                 <GridCell key={o.id}>
-                  <ClampText className="font-sans text-ink text-[15px] leading-relaxed">{o.statement}</ClampText>
+                  {o.title && <p className="font-sans text-ink mb-1 text-base">{o.title}</p>}
+                  <ClampText className="font-sans text-ink-muted text-[15px] leading-relaxed">{o.statement}</ClampText>
+                  <form action={submitGoalTitle} className="mt-2 flex items-end gap-2">
+                    <input type="hidden" name="outcomeId" value={o.id} />
+                    <input
+                      type="text"
+                      name="title"
+                      defaultValue={o.title ?? ""}
+                      placeholder="Short title"
+                      className="ia w-full border border-border bg-surface p-1.5 font-sans text-ink text-sm"
+                    />
+                    <button type="submit" className="ia-link font-mono text-xs uppercase tracking-wide2">
+                      Save
+                    </button>
+                  </form>
                   <p className="text-ink-faint mt-1 font-mono text-xs">{o.status}</p>
 
                   {o.status === "active" && (

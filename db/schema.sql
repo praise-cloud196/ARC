@@ -295,6 +295,8 @@ CREATE TABLE quests (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   kind          text NOT NULL CHECK (kind IN ('outcome', 'undertaking', 'probe')),
   statement     text NOT NULL CHECK (statement <> ''),
+  -- Short optional title (0012_quest_title.sql), used for Goals on Morning.
+  title         text CHECK (title IS NULL OR title <> ''),
   status        text NOT NULL DEFAULT 'active' CHECK (
                   (kind = 'outcome' AND status IN ('active', 'achieved', 'abandoned'))
                   OR (kind = 'undertaking' AND status IN ('active', 'completed', 'abandoned'))

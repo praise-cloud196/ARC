@@ -79,7 +79,8 @@ export function MorningScreen({ data, carryableLabels = [] }: { data: MorningScr
               <SystemVoice as="div" size="sm" className="text-ink-faint">
                 Main Quest
               </SystemVoice>
-              <ClampText className="font-sans text-ink-muted text-[15px] leading-relaxed">{mainQuest}</ClampText>
+              {mainQuest.title && <p className="font-sans text-ink text-lg leading-snug">{mainQuest.title}</p>}
+              <ClampText className="font-sans text-ink-muted text-[15px] leading-relaxed">{mainQuest.statement}</ClampText>
             </div>
           )}
 

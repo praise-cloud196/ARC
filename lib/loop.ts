@@ -112,16 +112,17 @@ async function getCurrentSeason(client: PoolClient): Promise<CurrentSeasonRow | 
   return result.rows[0] ?? null;
 }
 
-interface MainQuestRow {
+export interface MainQuest {
+  title: string | null;
   statement: string;
 }
 
 /** The earliest-created active Outcome — milestone-4-spec.md doesn't define "main quest" selection beyond this. milestone-5-spec.md doesn't revisit it either (in scope only for Undertakings/Probes themselves); still open for a later milestone. */
-async function getMainQuest(client: PoolClient): Promise<string | null> {
-  const result = await client.query<MainQuestRow>(
-    `SELECT statement FROM quests WHERE kind = 'outcome' AND status = 'active' ORDER BY created_at ASC LIMIT 1`
+async function getMainQuest(client: PoolClient): Promise<MainQuest | null> {
+  const result = await client.query<MainQuest>(
+    `SELECT title, statement FROM quests WHERE kind = 'outcome' AND status = 'active' ORDER BY created_at ASC LIMIT 1`
   );
-  return result.rows[0]?.statement ?? null;
+  return result.rows[0] ?? null;
 }
 
 export interface MorningScreenData {
@@ -129,7 +130,7 @@ export interface MorningScreenData {
   momentum: MomentumResult;
   seasonNumber: number | null;
   dayNumber: number | null;
-  mainQuest: string | null;
+  mainQuest: MainQuest | null;
   todaysCommitments: Commitment[];
   /** milestone-5-spec.md §7 / architecture-and-ux-v1.0.md §4.4: a Probe past its decision date stays here, with its resolution actions, until resolved — the one place Morning's "nothing else" rule is already known to bend. */
   probesAwaitingResolution: Probe[];

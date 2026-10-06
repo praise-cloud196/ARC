@@ -70,7 +70,8 @@ export default async function CharacterSheetPage() {
                         instead of the plain default, which renders these at
                         browser-default leading (~1.15) and reads dense on a
                         phone. */}
-                    <ClampText className="font-sans text-ink text-[15px] leading-relaxed">{outcome.statement}</ClampText>
+                    {outcome.title && <p className="font-sans text-ink mb-1 text-base">{outcome.title}</p>}
+                    <ClampText className="font-sans text-ink-muted text-[15px] leading-relaxed">{outcome.statement}</ClampText>
                   </GridCell>
                 ))}
               </div>

@@ -25,6 +25,8 @@ const QUEST_DOMAIN: Domain = "career";
 
 export interface Outcome {
   id: string;
+  /** Short name shown on Morning; null until one is set (db/migrations/0012_quest_title.sql). */
+  title: string | null;
   statement: string;
   status: "active" | "achieved" | "abandoned";
   createdAt: Date;
@@ -32,6 +34,7 @@ export interface Outcome {
 
 export interface RecordOutcomeInput {
   statement: string;
+  title?: string;
   occurredAt?: Date;
   timezone?: string;
 }
@@ -53,8 +56,8 @@ export async function recordOutcome(client: PoolClient, input: RecordOutcomeInpu
   }
 
   const inserted = await client.query<{ id: string; created_at: Date }>(
-    `INSERT INTO quests (kind, statement) VALUES ('outcome', $1) RETURNING id, created_at`,
-    [input.statement]
+    `INSERT INTO quests (kind, statement, title) VALUES ('outcome', $1, $2) RETURNING id, created_at`,
+    [input.statement, input.title ?? null]
   );
   const row = inserted.rows[0];
   if (!row) throw new Error("Failed to insert quests row.");
@@ -68,12 +71,27 @@ export async function recordOutcome(client: PoolClient, input: RecordOutcomeInpu
   });
 }
 
+/** Sets (or clears, with an empty string) a Goal's short title. */
+export async function setOutcomeTitle(client: Queryable, outcomeId: string, title: string): Promise<void> {
+  const trimmed = title.trim();
+  const updated = await client.query(`UPDATE quests SET title = $2 WHERE id = $1 AND kind = 'outcome' RETURNING id`, [
+    outcomeId,
+    trimmed === "" ? null : trimmed,
+  ]);
+  if (updated.rows.length === 0) throw new Error(`No outcome found with id ${outcomeId}`);
+}
+
 export async function listOutcomes(client: Queryable): Promise<Outcome[]> {
-  const result = await client.query<{ id: string; statement: string; status: Outcome["status"]; created_at: Date }>(
-    `SELECT id, statement, status, created_at FROM quests WHERE kind = 'outcome' ORDER BY created_at ASC`
-  );
+  const result = await client.query<{
+    id: string;
+    title: string | null;
+    statement: string;
+    status: Outcome["status"];
+    created_at: Date;
+  }>(`SELECT id, title, statement, status, created_at FROM quests WHERE kind = 'outcome' ORDER BY created_at ASC`);
   return result.rows.map((row) => ({
     id: row.id,
+    title: row.title,
     statement: row.statement,
     status: row.status,
     createdAt: row.created_at,
